@@ -10,7 +10,6 @@ const STATUS_FILTERS = ['ALL', 'OPEN', 'INVESTIGATING', 'RESOLVED'];
 
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState([]);
-  const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
   const [severityFilter, setSeverityFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -18,45 +17,40 @@ export default function IncidentsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const fetchIncidents = async () => {
+      try {
+        const res = await incidentsAPI.getAll();
+        const sorted = (res.data || []).sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        setIncidents(sorted);
+      } catch (err) {
+        console.error('Failed to fetch incidents:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchIncidents();
   }, []);
 
-  const fetchIncidents = async () => {
-    try {
-      const res = await incidentsAPI.getAll();
-      const sorted = (res.data || []).sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
-      setIncidents(sorted);
-      setFiltered(sorted);
-    } catch (err) {
-      console.error('Failed to fetch incidents:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Apply filters
-  useEffect(() => {
-    let result = [...incidents];
-
-    if (severityFilter !== 'ALL') {
-      result = result.filter(i => i.severity === severityFilter);
-    }
-    if (statusFilter !== 'ALL') {
-      result = result.filter(i => i.status === statusFilter);
-    }
+  // Compute filtered incidents on the fly during render to avoid cascading renders in useEffect
+  const filtered = incidents.filter(i => {
+    const matchesSeverity = severityFilter === 'ALL' || i.severity === severityFilter;
+    const matchesStatus = statusFilter === 'ALL' || i.status === statusFilter;
+    
+    let matchesSearch = true;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(i =>
+      matchesSearch = (
         i.title?.toLowerCase().includes(q) ||
         i.description?.toLowerCase().includes(q) ||
         i.location?.toLowerCase().includes(q)
       );
     }
-
-    setFiltered(result);
-  }, [incidents, severityFilter, statusFilter, searchQuery]);
+    
+    return matchesSeverity && matchesStatus && matchesSearch;
+  });
 
   const handleSearch = useCallback((query) => {
     setSearchQuery(query);

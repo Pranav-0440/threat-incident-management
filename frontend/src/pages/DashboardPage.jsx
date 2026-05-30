@@ -19,27 +19,27 @@ export default function DashboardPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [statsRes, incidentsRes] = await Promise.all([
+          incidentsAPI.getStats(),
+          incidentsAPI.getAll(),
+        ]);
+        setStats(statsRes.data);
+        // Sort by createdAt descending and take top 5
+        const sorted = (incidentsRes.data || []).sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        setRecentIncidents(sorted.slice(0, 5));
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, []);
-
-  const fetchData = async () => {
-    try {
-      const [statsRes, incidentsRes] = await Promise.all([
-        incidentsAPI.getStats(),
-        incidentsAPI.getAll(),
-      ]);
-      setStats(statsRes.data);
-      // Sort by createdAt descending and take top 5
-      const sorted = (incidentsRes.data || []).sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
-      setRecentIncidents(sorted.slice(0, 5));
-    } catch (err) {
-      console.error('Failed to fetch dashboard data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
