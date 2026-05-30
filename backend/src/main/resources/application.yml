@@ -1,0 +1,20 @@
+spring:
+  config:
+    import: optional:file:${user.dir}/../.env[.properties]
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://localhost:27017/incidentdb}
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
+
+server:
+  port: ${PORT:8080}
+
+jwt:
+  secret: YTJkM2Y1ZjctOGI5Ni00ZjEyLWFhMzMtNWQ2YjRhZGVmZjcxLXRocmVhdC1pbmNpZGVudC1tZ210LXNlY3JldC1rZXktMjAyNA==
+  expiration: 86400000
+
+logging:
+  level:
+    com.threatmgmt: DEBUG
+    org.springframework.security: DEBUG

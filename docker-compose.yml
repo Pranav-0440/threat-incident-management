@@ -1,0 +1,35 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:7
+    container_name: incident-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: incidentdb
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - incident-network
+
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: incident-elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - incident-network
+
+volumes:
+  mongodb_data:
+  es_data:
+
+networks:
+  incident-network:
+    driver: bridge
