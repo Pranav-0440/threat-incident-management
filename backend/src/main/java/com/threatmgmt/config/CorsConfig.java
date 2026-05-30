@@ -1,38 +1,30 @@
 package com.threatmgmt.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Configuration
 public class CorsConfig {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CorsConfig.class);
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
-    private String allowedOrigins;
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
-                .map(String::trim)
-                .collect(Collectors.toList());
-                
-        log.info("Initialized CORS configuration with allowed origins: {}", origins);
-                
-        configuration.setAllowedOrigins(origins);
+
+        // Allow ALL origins via pattern — works with credentials unlike setAllowedOrigins("*")
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        log.info("CORS configured with allowedOriginPatterns: [*] (all origins allowed)");
+
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
