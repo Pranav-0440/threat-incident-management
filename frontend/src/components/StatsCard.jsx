@@ -7,8 +7,8 @@ export default function StatsCard({ label, value, icon: Icon, variant = 'accent'
     // Animated counter
     const target = typeof value === 'number' ? value : 0;
     if (target === 0) {
-      setDisplayValue(0);
-      return;
+      const frame = requestAnimationFrame(() => setDisplayValue(0));
+      return () => cancelAnimationFrame(frame);
     }
 
     const duration = 800;

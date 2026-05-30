@@ -26,20 +26,20 @@ export default function IncidentDetailPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetchIncident();
-  }, [id]);
+    const fetchIncident = async () => {
+      try {
+        const res = await incidentsAPI.getById(id);
+        setIncident(res.data);
+      } catch (err) {
+        console.error('Failed to fetch incident:', err);
+        navigate('/incidents');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const fetchIncident = async () => {
-    try {
-      const res = await incidentsAPI.getById(id);
-      setIncident(res.data);
-    } catch (err) {
-      console.error('Failed to fetch incident:', err);
-      navigate('/incidents');
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchIncident();
+  }, [id, navigate]);
 
   const handleStatusUpdate = async (newStatus) => {
     setUpdating(true);

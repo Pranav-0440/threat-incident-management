@@ -29,7 +29,12 @@ export default function RegisterPage() {
       await register(formData);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      if (err.response?.data?.fieldErrors) {
+        const errorMsg = Object.values(err.response.data.fieldErrors).join('. ');
+        setError(errorMsg);
+      } else {
+        setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -75,8 +80,13 @@ export default function RegisterPage() {
               value={formData.username}
               onChange={handleChange}
               required
+              minLength={3}
+              maxLength={50}
               autoFocus
             />
+            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginTop: '4px' }}>
+              Must be between 3 and 50 characters
+            </span>
           </div>
 
           <div className="form-group">
@@ -105,6 +115,9 @@ export default function RegisterPage() {
               required
               minLength={6}
             />
+            <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', display: 'block', marginTop: '4px' }}>
+              Must be at least 6 characters
+            </span>
           </div>
 
           <div className="form-group">
