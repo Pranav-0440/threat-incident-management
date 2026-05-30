@@ -14,6 +14,8 @@ import java.util.stream.Collectors;
 @Configuration
 public class CorsConfig {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CorsConfig.class);
+
     @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
     private String allowedOrigins;
 
@@ -24,6 +26,8 @@ public class CorsConfig {
         List<String> origins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .collect(Collectors.toList());
+                
+        log.info("Initialized CORS configuration with allowed origins: {}", origins);
                 
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of(
