@@ -10,7 +10,7 @@ import org.springframework.data.elasticsearch.annotations.FieldType;
 
 import java.time.LocalDateTime;
 
-@Document(indexName = "incidents")
+@Document(indexName = "incidents", createIndex = false)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
