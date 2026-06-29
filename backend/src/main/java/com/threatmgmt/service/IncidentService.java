@@ -61,7 +61,15 @@ public class IncidentService {
     }
 
     public List<IncidentSearchDoc> searchIncidents(String query) {
-        return searchRepo.findByTitleContainingOrDescriptionContaining(query, query);
+        try {
+            return searchRepo.findByTitleContainingOrDescriptionContaining(query, query);
+        } catch (Exception e) {
+            log.warn("Elasticsearch search failed, falling back to MongoDB search: {}", e.getMessage());
+            List<Incident> fallbackResults = incidentRepo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(query, query);
+            return fallbackResults.stream()
+                    .map(this::mapToSearchDoc)
+                    .toList();
+        }
     }
 
     public Incident updateStatus(String id, String status) {

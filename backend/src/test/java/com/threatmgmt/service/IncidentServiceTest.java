@@ -11,6 +11,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -127,5 +128,47 @@ class IncidentServiceTest {
 
         assertEquals("INVESTIGATING", result.getStatus());
         assertNotNull(result.getUpdatedAt());
+    }
+
+    @Test
+    void searchIncidents_viaElasticsearch_success() {
+        IncidentSearchDoc doc = new IncidentSearchDoc();
+        doc.setId("1");
+        doc.setTitle("Phishing Threat");
+        doc.setDescription("Suspicious email received");
+
+        when(searchRepo.findByTitleContainingOrDescriptionContaining("Phishing", "Phishing"))
+                .thenReturn(List.of(doc));
+
+        List<IncidentSearchDoc> results = incidentService.searchIncidents("Phishing");
+
+        assertEquals(1, results.size());
+        assertEquals("Phishing Threat", results.get(0).getTitle());
+        verify(searchRepo, times(1)).findByTitleContainingOrDescriptionContaining(any(), any());
+        verifyNoInteractions(incidentRepo);
+    }
+
+    @Test
+    void searchIncidents_viaElasticsearch_failure_fallsBackToMongoDB() {
+        Incident fallbackIncident = Incident.builder()
+                .id("mongo-1")
+                .title("Phishing Threat (Mongo)")
+                .description("Suspicious email received (Mongo)")
+                .build();
+
+        // Simulate Elasticsearch failure
+        when(searchRepo.findByTitleContainingOrDescriptionContaining("Phishing", "Phishing"))
+                .thenThrow(new RuntimeException("Elasticsearch is down"));
+
+        // Setup MongoDB mock responses
+        when(incidentRepo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase("Phishing", "Phishing"))
+                .thenReturn(List.of(fallbackIncident));
+
+        List<IncidentSearchDoc> results = incidentService.searchIncidents("Phishing");
+
+        assertEquals(1, results.size());
+        assertEquals("Phishing Threat (Mongo)", results.get(0).getTitle());
+        verify(searchRepo, times(1)).findByTitleContainingOrDescriptionContaining(any(), any());
+        verify(incidentRepo, times(1)).findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(any(), any());
     }
 }

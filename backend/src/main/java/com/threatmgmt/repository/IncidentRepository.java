@@ -20,4 +20,6 @@ public interface IncidentRepository extends MongoRepository<Incident, String> {
     long countByStatus(String status);
 
     long countBySeverity(String severity);
+
+    List<Incident> findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String title, String description);
 }
