@@ -22,14 +22,13 @@ import {
   UploadCloud,
   FileText,
   Bot,
-  UserPlus,
-  ShieldAlert
+  UserPlus
 } from 'lucide-react';
 
 export default function IncidentDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [incident, setIncident] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -53,22 +52,6 @@ export default function IncidentDetailPage() {
   // AI Summary State
   const [generatingAi, setGeneratingAi] = useState(false);
   const [aiSummaryText, setAiSummaryText] = useState('');
-
-  const fetchIncidentData = async () => {
-    try {
-      const res = await incidentsAPI.getById(id);
-      setIncident(res.data);
-      setAssignedAnalyst(res.data.assignedTo || '');
-      if (res.data.aiSummary) {
-        setAiSummaryText(res.data.aiSummary);
-      }
-    } catch (err) {
-      console.error('Failed to fetch incident:', err);
-      navigate('/incidents');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const fetchComments = async () => {
     try {
@@ -98,11 +81,41 @@ export default function IncidentDetailPage() {
   };
 
   useEffect(() => {
-    fetchIncidentData();
-    fetchComments();
-    fetchAttachments();
-    fetchAuditLogs();
-  }, [id]);
+    let isMounted = true;
+    const loadAllData = async () => {
+      try {
+        const [incRes, comRes, attRes, logRes] = await Promise.allSettled([
+          incidentsAPI.getById(id),
+          commentsAPI.getByIncident(id),
+          attachmentsAPI.getByIncident(id),
+          auditLogsAPI.getByIncident(id),
+        ]);
+
+        if (isMounted && incRes.status === 'fulfilled') {
+          setIncident(incRes.value.data);
+          setAssignedAnalyst(incRes.value.data.assignedTo || '');
+          if (incRes.value.data.aiSummary) {
+            setAiSummaryText(incRes.value.data.aiSummary);
+          }
+        } else if (incRes.status === 'rejected') {
+          navigate('/incidents');
+        }
+
+        if (isMounted && comRes.status === 'fulfilled') setComments(comRes.value.data || []);
+        if (isMounted && attRes.status === 'fulfilled') setAttachments(attRes.value.data || []);
+        if (isMounted && logRes.status === 'fulfilled') setAuditLogs(logRes.value.data || []);
+      } catch (err) {
+        console.error('Failed to load incident detail data:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadAllData();
+    return () => {
+      isMounted = false;
+    };
+  }, [id, navigate]);
 
   const handleStatusUpdate = async (newStatus) => {
     setUpdatingStatus(true);

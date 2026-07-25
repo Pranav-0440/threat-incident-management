@@ -4,7 +4,6 @@ import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.repository.IncidentRepository;
 import com.threatmgmt.repository.IncidentSearchRepository;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,6 +25,12 @@ class IncidentServiceTest {
 
     @Mock
     private IncidentSearchRepository searchRepo;
+
+    @Mock
+    private AuditLogService auditLogService;
+
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private IncidentService incidentService;
@@ -75,7 +80,6 @@ class IncidentServiceTest {
 
     @Test
     void calculateRiskScore_cappedAt100() {
-        // Even if scores add up to more, it should cap at 100
         Incident incident = Incident.builder()
                 .severity("CRITICAL")
                 .category("WORKPLACE_VIOLENCE")
@@ -156,11 +160,9 @@ class IncidentServiceTest {
                 .description("Suspicious email received (Mongo)")
                 .build();
 
-        // Simulate Elasticsearch failure
         when(searchRepo.findByTitleContainingOrDescriptionContaining("Phishing", "Phishing"))
                 .thenThrow(new RuntimeException("Elasticsearch is down"));
 
-        // Setup MongoDB mock responses
         when(incidentRepo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase("Phishing", "Phishing"))
                 .thenReturn(List.of(fallbackIncident));
 

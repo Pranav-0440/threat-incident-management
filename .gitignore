@@ -1,0 +1,43 @@
+# Environment & Secret files
+.env
+.env.*
+*.env
+backend/.env
+frontend/.env
+
+# Node & Frontend dependencies/builds
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+dist-ssr/
+*.local
+
+# Java & Maven build outputs
+target/
+backend/target/
+*.class
+*.jar
+*.war
+
+# Uploads & Data storage
+uploads/
+backend/uploads/
+
+# IDEs & System files
+.idea/
+.vscode/
+*.swp
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

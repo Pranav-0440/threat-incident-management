@@ -1,4 +1,3 @@
-import React from 'react';
 
 const priorityConfig = {
   P1: { label: 'P1 - Critical', bg: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },

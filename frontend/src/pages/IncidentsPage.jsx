@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { incidentsAPI } from '../api/client';
 import IncidentCard from '../components/IncidentCard';
 import SearchBar from '../components/SearchBar';
-import { PlusCircle, AlertTriangle, Filter } from 'lucide-react';
+import { PlusCircle, AlertTriangle } from 'lucide-react';
 
 const SEVERITY_FILTERS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const PRIORITY_FILTERS = ['ALL', 'P1', 'P2', 'P3', 'P4'];

@@ -1,0 +1,17 @@
+# Environment variables
+.env
+.env.*
+
+# Target directory
+target/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+.classpath
+.project
+.settings/
+
+# Log files
+*.log

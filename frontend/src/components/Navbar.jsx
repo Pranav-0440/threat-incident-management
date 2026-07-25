@@ -21,23 +21,27 @@ export default function Navbar() {
 
   const isActive = (path) => location.pathname === path ? 'active' : '';
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await notificationsAPI.getAll();
-      setNotifications(res.data || []);
-      const countRes = await notificationsAPI.getUnreadCount();
-      setUnreadCount(countRes.data?.unreadCount || 0);
-    } catch (err) {
-      console.error('Failed to load notifications:', err);
-    }
-  };
-
   useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 15000);
-      return () => clearInterval(interval);
-    }
+    if (!user) return;
+
+    let isMounted = true;
+    const loadNotifications = async () => {
+      try {
+        const res = await notificationsAPI.getAll();
+        if (isMounted) setNotifications(res.data || []);
+        const countRes = await notificationsAPI.getUnreadCount();
+        if (isMounted) setUnreadCount(countRes.data?.unreadCount || 0);
+      } catch (err) {
+        console.error('Failed to load notifications:', err);
+      }
+    };
+
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [user]);
 
   const handleMarkAllRead = async () => {
