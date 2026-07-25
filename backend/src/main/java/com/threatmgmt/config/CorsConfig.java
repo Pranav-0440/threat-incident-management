@@ -22,14 +22,23 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        if ("*".equals(allowedOrigins.trim())) {
+        if (allowedOrigins == null || allowedOrigins.trim().isEmpty() || "*".equals(allowedOrigins.trim())) {
             configuration.setAllowedOriginPatterns(List.of("*"));
         } else {
-            List<String> originsList = Arrays.asList(allowedOrigins.split(","));
+            List<String> originsList = Arrays.stream(allowedOrigins.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .toList();
             configuration.setAllowedOriginPatterns(originsList);
         }
 
-        log.info("CORS configured for origins: {}", allowedOrigins);
+        // Guarantee CORS approval for Vercel, Railway, and localhost origins
+        configuration.addAllowedOriginPattern("https://*.vercel.app");
+        configuration.addAllowedOriginPattern("https://*.railway.app");
+        configuration.addAllowedOriginPattern("https://*.onrender.com");
+        configuration.addAllowedOriginPattern("http://localhost:*");
+
+        log.info("CORS configured for allowed origins: {}", allowedOrigins);
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
