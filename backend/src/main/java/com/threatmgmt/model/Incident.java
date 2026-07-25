@@ -39,7 +39,7 @@ public class Incident {
 
     private String category;    // WORKPLACE_VIOLENCE, THREAT, SUSPICIOUS_ACTIVITY, CYBER_THREAT, PHYSICAL_SECURITY
 
-    private String status;      // OPEN, INVESTIGATING, RESOLVED
+    private String status;      // OPEN, INVESTIGATING, WAITING_EVIDENCE, RESOLVED, CLOSED
 
     private String reportedBy;
 
@@ -47,7 +47,15 @@ public class Incident {
 
     private String assignedToName;  // Full name of assigned analyst
 
+    private String department;      // SOC Team, IT Security, etc.
+
     private List<String> tags;
+
+    private List<ChecklistItem> checklist;
+
+    private List<String> relatedIncidentIds;
+
+    private List<String> watchers;
 
     private String aiSummary;
 
@@ -56,5 +64,16 @@ public class Incident {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
-}
 
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ChecklistItem {
+        private String id;
+        private String title;
+        private boolean completed;
+        private String completedBy;
+        private LocalDateTime completedAt;
+    }
+}

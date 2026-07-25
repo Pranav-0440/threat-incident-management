@@ -39,6 +39,11 @@ public class IncidentController {
         return ResponseEntity.ok(incidentService.findById(id));
     }
 
+    @GetMapping("/{id}/related")
+    public ResponseEntity<List<Incident>> getRelated(@PathVariable String id) {
+        return ResponseEntity.ok(incidentService.getRelatedIncidents(id));
+    }
+
     @GetMapping("/search")
     public ResponseEntity<List<IncidentSearchDoc>> search(@RequestParam String q) {
         return ResponseEntity.ok(incidentService.searchIncidents(q));
@@ -69,7 +74,7 @@ public class IncidentController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ANALYST') or hasRole('ADMIN')")
     public ResponseEntity<Incident> updateStatus(
             @PathVariable String id,
             @RequestParam String status,
@@ -86,6 +91,15 @@ public class IncidentController {
         String analystUsername = payload.get("analystUsername");
         String analystName = payload.get("analystName");
         return ResponseEntity.ok(incidentService.assignAnalyst(id, analystUsername, analystName, authentication.getName()));
+    }
+
+    @PatchMapping("/{id}/checklist/{itemId}/toggle")
+    @PreAuthorize("hasRole('ANALYST') or hasRole('ADMIN')")
+    public ResponseEntity<Incident> toggleChecklist(
+            @PathVariable String id,
+            @PathVariable String itemId,
+            Authentication authentication) {
+        return ResponseEntity.ok(incidentService.toggleChecklistItem(id, itemId, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")

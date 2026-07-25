@@ -77,6 +77,12 @@ export default function Navbar() {
             <PlusCircle size={16} />
             Report
           </Link>
+          {isAdmin() && (
+            <Link to="/admin/users" className={isActive('/admin/users')}>
+              <Shield size={16} />
+              User Admin
+            </Link>
+          )}
         </div>
 
         <div className="navbar-user" style={{ position: 'relative' }}>

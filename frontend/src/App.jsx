@@ -7,6 +7,8 @@ import DashboardPage from './pages/DashboardPage';
 import IncidentsPage from './pages/IncidentsPage';
 import IncidentDetailPage from './pages/IncidentDetailPage';
 import CreateIncidentPage from './pages/CreateIncidentPage';
+import UserManagementPage from './pages/UserManagementPage';
+import AiCopilotWidget from './components/AiCopilotWidget';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -36,6 +38,7 @@ function AppLayout({ children }) {
     <div className="app-layout">
       <Navbar />
       {children}
+      <AiCopilotWidget />
     </div>
   );
 }
@@ -96,6 +99,17 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <IncidentDetailPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/users"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <UserManagementPage />
             </AppLayout>
           </ProtectedRoute>
         }

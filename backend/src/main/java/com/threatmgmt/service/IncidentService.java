@@ -2,6 +2,7 @@ package com.threatmgmt.service;
 
 import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Incident;
+import com.threatmgmt.model.Incident.ChecklistItem;
 import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.repository.IncidentRepository;
 import com.threatmgmt.repository.IncidentSearchRepository;
@@ -10,9 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -31,15 +30,21 @@ public class IncidentService {
         if (incident.getPriority() == null || incident.getPriority().isEmpty()) {
             incident.setPriority(calculatePriority(incident));
         }
+        if (incident.getDepartment() == null || incident.getDepartment().isEmpty()) {
+            incident.setDepartment("SOC Team");
+        }
+
+        // Default SOC Investigation Checklist
+        if (incident.getChecklist() == null || incident.getChecklist().isEmpty()) {
+            incident.setChecklist(createDefaultChecklist());
+        }
 
         Incident saved = incidentRepo.save(incident);
         log.info("Created incident: {} with risk score: {} and priority: {}", saved.getId(), saved.getRiskScore(), saved.getPriority());
 
-        // Audit Log
         auditLogService.logEvent(saved.getId(), incident.getReportedBy(), incident.getReportedBy(), "INCIDENT_CREATED",
                 "Incident reported by " + incident.getReportedBy() + ": " + saved.getTitle(), null);
 
-        // Sync to Elasticsearch
         try {
             IncidentSearchDoc doc = mapToSearchDoc(saved);
             searchRepo.save(doc);
@@ -92,7 +97,6 @@ public class IncidentService {
                 "Incident assigned to " + (analystName != null ? analystName : analystUsername),
                 Map.of("previousAssignedTo", prevAnalyst != null ? prevAnalyst : "Unassigned", "newAssignedTo", analystUsername));
 
-        // Notify Assigned Analyst
         if (analystUsername != null && !analystUsername.isEmpty()) {
             notificationService.createNotification(
                     analystUsername,
@@ -122,7 +126,6 @@ public class IncidentService {
                 "Status updated from " + oldStatus + " to " + status,
                 Map.of("oldStatus", oldStatus, "newStatus", status));
 
-        // Notify assigned analyst if status changed by admin
         if (incident.getAssignedTo() != null && !incident.getAssignedTo().equals(updatedBy)) {
             notificationService.createNotification(
                     incident.getAssignedTo(),
@@ -140,6 +143,38 @@ public class IncidentService {
         }
 
         return saved;
+    }
+
+    public Incident toggleChecklistItem(String incidentId, String itemId, String username) {
+        Incident incident = findById(incidentId);
+        if (incident.getChecklist() != null) {
+            for (ChecklistItem item : incident.getChecklist()) {
+                if (item.getId().equals(itemId)) {
+                    boolean newStatus = !item.isCompleted();
+                    item.setCompleted(newStatus);
+                    item.setCompletedBy(newStatus ? username : null);
+                    item.setCompletedAt(newStatus ? LocalDateTime.now() : null);
+
+                    auditLogService.logEvent(incidentId, username, username, "CHECKLIST_UPDATED",
+                            (newStatus ? "Completed" : "Reopened") + " checklist item: " + item.getTitle(), null);
+                    break;
+                }
+            }
+        }
+        incident.setUpdatedAt(LocalDateTime.now());
+        return incidentRepo.save(incident);
+    }
+
+    public List<Incident> getRelatedIncidents(String incidentId) {
+        Incident current = findById(incidentId);
+        List<Incident> all = incidentRepo.findAll();
+        return all.stream()
+                .filter(i -> !i.getId().equals(incidentId))
+                .filter(i -> (current.getCategory() != null && current.getCategory().equalsIgnoreCase(i.getCategory())) ||
+                             (current.getSeverity() != null && current.getSeverity().equalsIgnoreCase(i.getSeverity())) ||
+                             (current.getLocation() != null && current.getLocation().equalsIgnoreCase(i.getLocation())))
+                .limit(4)
+                .toList();
     }
 
     public Incident updateIncident(String id, Incident updated) {
@@ -192,13 +227,14 @@ public class IncidentService {
         log.info("Deleted incident: {}", id);
     }
 
-
     public Map<String, Object> getStats() {
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", incidentRepo.count());
         stats.put("open", incidentRepo.countByStatus("OPEN"));
         stats.put("investigating", incidentRepo.countByStatus("INVESTIGATING"));
+        stats.put("waiting_evidence", incidentRepo.countByStatus("WAITING_EVIDENCE"));
         stats.put("resolved", incidentRepo.countByStatus("RESOLVED"));
+        stats.put("closed", incidentRepo.countByStatus("CLOSED"));
         stats.put("critical", incidentRepo.countBySeverity("CRITICAL"));
         stats.put("high", incidentRepo.countBySeverity("HIGH"));
         stats.put("medium", incidentRepo.countBySeverity("MEDIUM"));
@@ -237,6 +273,17 @@ public class IncidentService {
         if ("HIGH".equalsIgnoreCase(incident.getSeverity()) || score >= 50) return "P2";
         if ("MEDIUM".equalsIgnoreCase(incident.getSeverity()) || score >= 30) return "P3";
         return "P4";
+    }
+
+    private List<ChecklistItem> createDefaultChecklist() {
+        return List.of(
+                ChecklistItem.builder().id("1").title("Photos & CCTV Footage Uploaded").completed(false).build(),
+                ChecklistItem.builder().id("2").title("Network & Firewall Logs Collected").completed(false).build(),
+                ChecklistItem.builder().id("3").title("Witness Interview Conducted").completed(false).build(),
+                ChecklistItem.builder().id("4").title("Access Badge / Account Temporarily Disabled").completed(false).build(),
+                ChecklistItem.builder().id("5").title("Police / Security Escalation Notified").completed(false).build(),
+                ChecklistItem.builder().id("6").title("Management Incident Report Approved").completed(false).build()
+        );
     }
 
     private IncidentSearchDoc mapToSearchDoc(Incident i) {

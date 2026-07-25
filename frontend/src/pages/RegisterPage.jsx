@@ -9,7 +9,6 @@ export default function RegisterPage() {
     password: '',
     email: '',
     fullName: '',
-    role: 'ANALYST',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -124,19 +123,7 @@ export default function RegisterPage() {
             </span>
           </div>
 
-          <div className="form-group">
-            <label className="form-label" htmlFor="reg-role">Role</label>
-            <select
-              id="reg-role"
-              name="role"
-              className="form-select"
-              value={formData.role}
-              onChange={handleChange}
-            >
-              <option value="ANALYST">Analyst</option>
-              <option value="ADMIN">Admin</option>
-            </select>
-          </div>
+
 
           <button
             type="submit"

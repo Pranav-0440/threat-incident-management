@@ -51,6 +51,8 @@ export const incidentsAPI = {
   update: (id, incident) => client.put(`/incidents/${id}`, incident),
   updateStatus: (id, status) => client.patch(`/incidents/${id}/status?status=${status}`),
   assignAnalyst: (id, analystUsername, analystName) => client.patch(`/incidents/${id}/assign`, { analystUsername, analystName }),
+  toggleChecklist: (id, itemId) => client.patch(`/incidents/${id}/checklist/${itemId}/toggle`),
+  getRelated: (id) => client.get(`/incidents/${id}/related`),
   delete: (id) => client.delete(`/incidents/${id}`),
   search: (query) => client.get(`/incidents/search?q=${encodeURIComponent(query)}`),
   getBySeverity: (severity) => client.get(`/incidents/severity/${severity}`),
@@ -86,6 +88,12 @@ export const notificationsAPI = {
   getUnreadCount: () => client.get('/notifications/unread-count'),
   markAsRead: (id) => client.patch(`/notifications/${id}/read`),
   markAllAsRead: () => client.patch('/notifications/read-all'),
+};
+
+// ========== Users API ==========
+export const usersAPI = {
+  getAll: () => client.get('/users'),
+  updateRole: (id, role) => client.patch(`/users/${id}/role`, { role }),
 };
 
 export default client;
