@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/api/v1/:path*",
+      "destination": "https://threat-incident-management-production.up.railway.app/api/v1/:path*"
     }
   ]
 }
