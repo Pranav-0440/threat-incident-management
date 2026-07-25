@@ -20,7 +20,7 @@ export default function LoginPage() {
       await login(username, password);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Invalid username or password');
+      setError(err.response?.data?.message || err.message || 'Invalid username or password');
     } finally {
       setLoading(false);
     }

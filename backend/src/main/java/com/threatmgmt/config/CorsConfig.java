@@ -15,7 +15,7 @@ public class CorsConfig {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CorsConfig.class);
 
-    @Value("${app.cors.allowed-origins:http://localhost:5173}")
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000,https://*.vercel.app,https://*.onrender.com,https://*.netlify.app}")
     private String allowedOrigins;
 
     @Bean
@@ -23,11 +23,10 @@ public class CorsConfig {
         CorsConfiguration configuration = new CorsConfiguration();
 
         List<String> originsList = Arrays.asList(allowedOrigins.split(","));
-        configuration.setAllowedOrigins(originsList);
-        log.info("CORS configured with allowedOrigins: {}", originsList);
+        configuration.setAllowedOriginPatterns(originsList);
+        log.info("CORS configured with allowedOriginPatterns: {}", originsList);
 
-        configuration.setAllowedMethods(List.of(
-                "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);

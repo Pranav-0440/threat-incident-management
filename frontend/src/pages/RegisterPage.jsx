@@ -32,8 +32,12 @@ export default function RegisterPage() {
       if (err.response?.data?.fieldErrors) {
         const errorMsg = Object.values(err.response.data.fieldErrors).join('. ');
         setError(errorMsg);
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err.message) {
+        setError(`${err.message}. Check backend API URL and network connection.`);
       } else {
-        setError(err.response?.data?.message || 'Registration failed. Please try again.');
+        setError('Registration failed. Please try again.');
       }
     } finally {
       setLoading(false);
