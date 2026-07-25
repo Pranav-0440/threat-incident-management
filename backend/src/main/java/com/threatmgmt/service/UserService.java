@@ -33,7 +33,16 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException(
                         "User not found: " + username));
 
-        List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
+        Set<String> allRoles = new HashSet<>(user.getRoles() != null ? user.getRoles() : List.of("ROLE_ANALYST"));
+        if (allRoles.contains("ROLE_SUPER_ADMIN")) {
+            allRoles.add("ROLE_ADMIN");
+            allRoles.add("ROLE_ANALYST");
+        }
+        if (allRoles.contains("ROLE_ADMIN")) {
+            allRoles.add("ROLE_ANALYST");
+        }
+
+        List<SimpleGrantedAuthority> authorities = allRoles.stream()
                 .map(SimpleGrantedAuthority::new)
                 .toList();
 

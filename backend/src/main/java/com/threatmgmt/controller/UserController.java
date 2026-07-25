@@ -23,7 +23,7 @@ public class UserController {
     }
 
     @PatchMapping("/{id}/role")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<User> updateUserRole(
             @PathVariable String id,
             @RequestBody Map<String, String> payload) {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { usersAPI } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Users, Shield, UserCheck, Mail, Activity } from 'lucide-react';
+import { Users, Shield, UserCheck, Mail, Activity, RefreshCw } from 'lucide-react';
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
@@ -10,6 +10,7 @@ export default function UserManagementPage() {
   const { user: currentUser } = useAuth();
 
   const fetchUsers = async () => {
+    setLoading(true);
     try {
       const res = await usersAPI.getAll();
       setUsers(res.data || []);
@@ -40,7 +41,7 @@ export default function UserManagementPage() {
   }, []);
 
   const handleRoleToggle = async (targetUser) => {
-    const isCurrentlyAdmin = targetUser.roles?.includes('ROLE_ADMIN');
+    const isCurrentlyAdmin = targetUser.roles?.some(r => r.includes('ADMIN'));
     const newRole = isCurrentlyAdmin ? 'ANALYST' : 'ADMIN';
 
     setUpdatingId(targetUser.id);
@@ -66,9 +67,14 @@ export default function UserManagementPage() {
 
   return (
     <div className="page-container">
-      <div className="page-header" style={{ marginBottom: 'var(--space-6)' }}>
-        <h1>Admin User Management</h1>
-        <p>Manage SOC analyst accounts, assign role permissions, and review active analyst workloads</p>
+      <div className="page-header" style={{ marginBottom: 'var(--space-6)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>Admin User Management</h1>
+          <p>Manage SOC analyst accounts, assign role permissions, and review active analyst workloads</p>
+        </div>
+        <button className="btn btn-secondary btn-sm" onClick={fetchUsers} title="Refresh User List">
+          <RefreshCw size={14} /> Refresh
+        </button>
       </div>
 
       {/* User Stats Grid */}
@@ -103,7 +109,7 @@ export default function UserManagementPage() {
             </div>
           </div>
           <div className="stat-card-value">
-            {users.filter(u => u.roles?.includes('ROLE_ADMIN')).length}
+            {users.filter(u => u.roles?.some(r => r.includes('ADMIN'))).length}
           </div>
         </div>
       </div>
@@ -121,82 +127,90 @@ export default function UserManagementPage() {
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => {
-              const isAdmin = u.roles?.includes('ROLE_ADMIN');
-              const isSelf = currentUser?.username === u.username;
+            {users.length === 0 ? (
+              <tr>
+                <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: '#94a3b8' }}>
+                  No users found or connection error. Click "Refresh" above to reload.
+                </td>
+              </tr>
+            ) : (
+              users.map((u) => {
+                const isAdminUser = u.roles?.some(r => r.includes('ADMIN'));
+                const isSelf = currentUser?.username === u.username;
 
-              return (
-                <tr key={u.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s ease' }}>
-                  <td style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div
+                return (
+                  <tr key={u.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s ease' }}>
+                    <td style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div
+                          style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '50%',
+                            backgroundColor: isAdminUser ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+                            color: isAdminUser ? '#ef4444' : '#3b82f6',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: '14px'
+                          }}
+                        >
+                          {(u.fullName || u.username).charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: '#f8fafc', fontSize: '14px' }}>
+                            {u.fullName || u.username} {isSelf && <span style={{ fontSize: '10px', background: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>YOU</span>}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#64748b' }}>@{u.username}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      <span
                         style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          backgroundColor: isAdmin ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                          color: isAdmin ? '#ef4444' : '#3b82f6',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
+                          padding: '4px 10px',
+                          borderRadius: '9999px',
+                          fontSize: '11px',
                           fontWeight: 700,
-                          fontSize: '14px'
+                          backgroundColor: isAdminUser ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                          color: isAdminUser ? '#ef4444' : '#60a5fa',
+                          border: isAdminUser ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)'
                         }}
                       >
-                        {(u.fullName || u.username).charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 600, color: '#f8fafc', fontSize: '14px' }}>
-                          {u.fullName || u.username} {isSelf && <span style={{ fontSize: '10px', background: '#3b82f6', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>YOU</span>}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#64748b' }}>@{u.username}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{ padding: '16px' }}>
-                    <span
-                      style={{
-                        padding: '4px 10px',
-                        borderRadius: '9999px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        backgroundColor: isAdmin ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                        color: isAdmin ? '#ef4444' : '#60a5fa',
-                        border: isAdmin ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)'
-                      }}
-                    >
-                      {isAdmin ? 'ADMINISTRATOR' : 'SOC ANALYST'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px', fontSize: '13px', color: '#cbd5e1' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Mail size={14} style={{ color: '#64748b' }} /> {u.email || 'N/A'}
-                    </div>
-                  </td>
-                  <td style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Activity size={14} style={{ color: u.activeAssigned > 0 ? '#f97316' : '#10b981' }} />
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: u.activeAssigned > 0 ? '#f97316' : '#f8fafc' }}>
-                        {u.activeAssigned || 0} Active
+                        {isAdminUser ? 'ADMINISTRATOR' : 'SOC ANALYST'}
                       </span>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>
-                        ({u.totalAssigned || 0} Total)
-                      </span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '16px', textAlign: 'right' }}>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => handleRoleToggle(u)}
-                      disabled={updatingId === u.id || isSelf}
-                      title={isSelf ? 'Cannot change own role' : 'Toggle between Analyst & Admin'}
-                    >
-                      {updatingId === u.id ? 'Updating...' : `Switch to ${isAdmin ? 'Analyst' : 'Admin'}`}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+                    </td>
+                    <td style={{ padding: '16px', fontSize: '13px', color: '#cbd5e1' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Mail size={14} style={{ color: '#64748b' }} /> {u.email || 'N/A'}
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Activity size={14} style={{ color: u.activeAssigned > 0 ? '#f97316' : '#10b981' }} />
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: u.activeAssigned > 0 ? '#f97316' : '#f8fafc' }}>
+                          {u.activeAssigned || 0} Active
+                        </span>
+                        <span style={{ fontSize: '12px', color: '#64748b' }}>
+                          ({u.totalAssigned || 0} Total)
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: '16px', textAlign: 'right' }}>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleRoleToggle(u)}
+                        disabled={updatingId === u.id || isSelf}
+                        title={isSelf ? 'Cannot change own role' : 'Toggle between Analyst & Admin'}
+                      >
+                        {updatingId === u.id ? 'Updating...' : `Switch to ${isAdminUser ? 'Analyst' : 'Admin'}`}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
