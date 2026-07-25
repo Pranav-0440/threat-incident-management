@@ -63,22 +63,37 @@ public class IncidentController {
     @PreAuthorize("hasRole('ANALYST') or hasRole('ADMIN')")
     public ResponseEntity<Incident> update(
             @PathVariable String id,
-            @Valid @RequestBody Incident incident) {
-        return ResponseEntity.ok(incidentService.updateIncident(id, incident));
+            @Valid @RequestBody Incident incident,
+            Authentication authentication) {
+        return ResponseEntity.ok(incidentService.updateIncident(id, incident, authentication.getName()));
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ANALYST') or hasRole('ADMIN')")
     public ResponseEntity<Incident> updateStatus(
             @PathVariable String id,
-            @RequestParam String status) {
-        return ResponseEntity.ok(incidentService.updateStatus(id, status));
+            @RequestParam String status,
+            Authentication authentication) {
+        return ResponseEntity.ok(incidentService.updateStatus(id, status, authentication.getName()));
+    }
+
+    @PatchMapping("/{id}/assign")
+    @PreAuthorize("hasRole('ANALYST') or hasRole('ADMIN')")
+    public ResponseEntity<Incident> assignAnalyst(
+            @PathVariable String id,
+            @RequestBody Map<String, String> payload,
+            Authentication authentication) {
+        String analystUsername = payload.get("analystUsername");
+        String analystName = payload.get("analystName");
+        return ResponseEntity.ok(incidentService.assignAnalyst(id, analystUsername, analystName, authentication.getName()));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable String id) {
-        incidentService.delete(id);
+    public ResponseEntity<Void> delete(
+            @PathVariable String id,
+            Authentication authentication) {
+        incidentService.delete(id, authentication.getName());
         return ResponseEntity.noContent().build();
     }
 }

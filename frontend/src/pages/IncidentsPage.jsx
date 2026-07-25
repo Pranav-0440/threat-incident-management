@@ -3,16 +3,20 @@ import { useNavigate } from 'react-router-dom';
 import { incidentsAPI } from '../api/client';
 import IncidentCard from '../components/IncidentCard';
 import SearchBar from '../components/SearchBar';
-import { PlusCircle, AlertTriangle } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Filter } from 'lucide-react';
 
 const SEVERITY_FILTERS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+const PRIORITY_FILTERS = ['ALL', 'P1', 'P2', 'P3', 'P4'];
 const STATUS_FILTERS = ['ALL', 'OPEN', 'INVESTIGATING', 'RESOLVED'];
+const CATEGORY_FILTERS = ['ALL', 'WORKPLACE_VIOLENCE', 'THREAT', 'SUSPICIOUS_ACTIVITY', 'CYBER_THREAT', 'PHYSICAL_SECURITY'];
 
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [severityFilter, setSeverityFilter] = useState('ALL');
+  const [priorityFilter, setPriorityFilter] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
@@ -34,22 +38,58 @@ export default function IncidentsPage() {
     fetchIncidents();
   }, []);
 
-  // Compute filtered incidents on the fly during render to avoid cascading renders in useEffect
   const filtered = incidents.filter(i => {
     const matchesSeverity = severityFilter === 'ALL' || i.severity === severityFilter;
+    const matchesPriority = priorityFilter === 'ALL' || (i.priority || 'P3') === priorityFilter;
     const matchesStatus = statusFilter === 'ALL' || i.status === statusFilter;
-    
+    const matchesCategory = categoryFilter === 'ALL' || i.category === categoryFilter;
+
     let matchesSearch = true;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      matchesSearch = (
-        i.title?.toLowerCase().includes(q) ||
-        i.description?.toLowerCase().includes(q) ||
-        i.location?.toLowerCase().includes(q)
-      );
+
+      // Advanced syntax parsing support: severity:critical status:open
+      if (q.includes(':')) {
+        const parts = q.split(' ');
+        matchesSearch = parts.every(part => {
+          if (part.startsWith('severity:')) {
+            const val = part.split(':')[1];
+            return i.severity?.toLowerCase() === val;
+          }
+          if (part.startsWith('status:')) {
+            const val = part.split(':')[1];
+            return i.status?.toLowerCase() === val;
+          }
+          if (part.startsWith('priority:')) {
+            const val = part.split(':')[1];
+            return (i.priority || 'p3').toLowerCase() === val;
+          }
+          if (part.startsWith('category:')) {
+            const val = part.split(':')[1];
+            return i.category?.toLowerCase().includes(val);
+          }
+          if (part.startsWith('assigned:')) {
+            const val = part.split(':')[1];
+            return i.assignedTo?.toLowerCase().includes(val);
+          }
+          return (
+            i.title?.toLowerCase().includes(part) ||
+            i.description?.toLowerCase().includes(part) ||
+            i.location?.toLowerCase().includes(part)
+          );
+        });
+      } else {
+        matchesSearch = (
+          i.title?.toLowerCase().includes(q) ||
+          i.description?.toLowerCase().includes(q) ||
+          i.location?.toLowerCase().includes(q) ||
+          i.reportedBy?.toLowerCase().includes(q) ||
+          i.assignedTo?.toLowerCase().includes(q)
+        );
+      }
     }
-    
-    return matchesSeverity && matchesStatus && matchesSearch;
+
+    return matchesSeverity && matchesPriority && matchesStatus && matchesCategory && matchesSearch;
   });
 
   const handleSearch = useCallback((query) => {
@@ -83,39 +123,72 @@ export default function IncidentsPage() {
         </button>
       </div>
 
-      {/* Search & Filters */}
+      {/* Search & Syntax support */}
       <div style={{ marginBottom: 'var(--space-5)' }}>
-        <SearchBar onSearch={handleSearch} />
+        <SearchBar onSearch={handleSearch} placeholder="Search by text or syntax (e.g. severity:critical status:open category:threat)..." />
       </div>
 
-      <div className="filter-bar">
-        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Severity:
-        </span>
-        {SEVERITY_FILTERS.map(f => (
-          <button
-            key={f}
-            className={`filter-chip ${severityFilter === f ? 'active' : ''}`}
-            onClick={() => setSeverityFilter(f)}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
+      {/* Filter Toolbar */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: 'var(--space-6)' }}>
+        <div className="filter-bar">
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: '70px' }}>
+            Priority:
+          </span>
+          {PRIORITY_FILTERS.map(f => (
+            <button
+              key={f}
+              className={`filter-chip ${priorityFilter === f ? 'active' : ''}`}
+              onClick={() => setPriorityFilter(f)}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
 
-      <div className="filter-bar">
-        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Status:
-        </span>
-        {STATUS_FILTERS.map(f => (
-          <button
-            key={f}
-            className={`filter-chip ${statusFilter === f ? 'active' : ''}`}
-            onClick={() => setStatusFilter(f)}
-          >
-            {f}
-          </button>
-        ))}
+        <div className="filter-bar">
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: '70px' }}>
+            Severity:
+          </span>
+          {SEVERITY_FILTERS.map(f => (
+            <button
+              key={f}
+              className={`filter-chip ${severityFilter === f ? 'active' : ''}`}
+              onClick={() => setSeverityFilter(f)}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
+        <div className="filter-bar">
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: '70px' }}>
+            Status:
+          </span>
+          {STATUS_FILTERS.map(f => (
+            <button
+              key={f}
+              className={`filter-chip ${statusFilter === f ? 'active' : ''}`}
+              onClick={() => setStatusFilter(f)}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
+        <div className="filter-bar">
+          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: '70px' }}>
+            Category:
+          </span>
+          {CATEGORY_FILTERS.map(f => (
+            <button
+              key={f}
+              className={`filter-chip ${categoryFilter === f ? 'active' : ''}`}
+              onClick={() => setCategoryFilter(f)}
+            >
+              {f.replace(/_/g, ' ')}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Incident List */}
@@ -132,7 +205,7 @@ export default function IncidentsPage() {
           </div>
           <h3>No incidents found</h3>
           <p>
-            {searchQuery || severityFilter !== 'ALL' || statusFilter !== 'ALL'
+            {searchQuery || severityFilter !== 'ALL' || statusFilter !== 'ALL' || priorityFilter !== 'ALL' || categoryFilter !== 'ALL'
               ? 'Try adjusting your filters or search query.'
               : 'No incidents have been reported yet. Click "Report Incident" to create one.'}
           </p>

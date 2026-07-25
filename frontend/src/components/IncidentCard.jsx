@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import SeverityBadge from './SeverityBadge';
 import StatusBadge from './StatusBadge';
-import { MapPin, Clock, User } from 'lucide-react';
+import PriorityBadge from './PriorityBadge';
+import { MapPin, Clock, User, Shield } from 'lucide-react';
 
 export default function IncidentCard({ incident }) {
   const navigate = useNavigate();
@@ -24,11 +25,14 @@ export default function IncidentCard({ incident }) {
     >
       <div className={`incident-card-severity-strip ${(incident.severity || '').toLowerCase()}`} />
       <div className="incident-card-body">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+          <PriorityBadge priority={incident.priority || 'P3'} />
+          <SeverityBadge severity={incident.severity} />
+          <StatusBadge status={incident.status} />
+        </div>
         <div className="incident-card-title">{incident.title}</div>
         <div className="incident-card-description">{incident.description}</div>
         <div className="incident-card-meta">
-          <SeverityBadge severity={incident.severity} />
-          <StatusBadge status={incident.status} />
           {incident.location && (
             <span className="incident-card-meta-item">
               <MapPin size={12} />
@@ -42,7 +46,13 @@ export default function IncidentCard({ incident }) {
           {incident.reportedBy && (
             <span className="incident-card-meta-item">
               <User size={12} />
-              {incident.reportedBy}
+              By: {incident.reportedBy}
+            </span>
+          )}
+          {incident.assignedTo && (
+            <span className="incident-card-meta-item" style={{ color: '#818cf8', fontWeight: 600 }}>
+              <Shield size={12} />
+              Analyst: {incident.assignedTo}
             </span>
           )}
         </div>

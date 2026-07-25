@@ -28,7 +28,6 @@ client.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // Only redirect if not already on auth pages
       if (!window.location.pathname.startsWith('/login') &&
         !window.location.pathname.startsWith('/register')) {
         window.location.href = '/login';
@@ -51,11 +50,42 @@ export const incidentsAPI = {
   create: (incident) => client.post('/incidents', incident),
   update: (id, incident) => client.put(`/incidents/${id}`, incident),
   updateStatus: (id, status) => client.patch(`/incidents/${id}/status?status=${status}`),
+  assignAnalyst: (id, analystUsername, analystName) => client.patch(`/incidents/${id}/assign`, { analystUsername, analystName }),
   delete: (id) => client.delete(`/incidents/${id}`),
   search: (query) => client.get(`/incidents/search?q=${encodeURIComponent(query)}`),
   getBySeverity: (severity) => client.get(`/incidents/severity/${severity}`),
   getByStatus: (status) => client.get(`/incidents/status/${status}`),
   getStats: () => client.get('/incidents/stats'),
+};
+
+// ========== Comments API ==========
+export const commentsAPI = {
+  getByIncident: (incidentId) => client.get(`/incidents/${incidentId}/comments`),
+  add: (incidentId, content) => client.post(`/incidents/${incidentId}/comments`, { content }),
+  delete: (incidentId, commentId) => client.delete(`/incidents/${incidentId}/comments/${commentId}`),
+};
+
+// ========== Attachments API ==========
+export const attachmentsAPI = {
+  getByIncident: (incidentId) => client.get(`/attachments/incident/${incidentId}`),
+  upload: (incidentId, formData) => client.post(`/attachments/upload/${incidentId}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  delete: (id) => client.delete(`/attachments/${id}`),
+};
+
+// ========== Audit Logs API ==========
+export const auditLogsAPI = {
+  getByIncident: (incidentId) => client.get(`/audit-logs/incident/${incidentId}`),
+  getAll: () => client.get('/audit-logs'),
+};
+
+// ========== Notifications API ==========
+export const notificationsAPI = {
+  getAll: () => client.get('/notifications'),
+  getUnreadCount: () => client.get('/notifications/unread-count'),
+  markAsRead: (id) => client.patch(`/notifications/${id}/read`),
+  markAllAsRead: () => client.patch('/notifications/read-all'),
 };
 
 export default client;
