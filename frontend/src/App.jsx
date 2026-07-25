@@ -8,6 +8,9 @@ import IncidentsPage from './pages/IncidentsPage';
 import IncidentDetailPage from './pages/IncidentDetailPage';
 import CreateIncidentPage from './pages/CreateIncidentPage';
 import UserManagementPage from './pages/UserManagementPage';
+import ReportsPage from './pages/ReportsPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import SettingsPage from './pages/SettingsPage';
 import AiCopilotWidget from './components/AiCopilotWidget';
 
 function ProtectedRoute({ children }) {
@@ -110,6 +113,37 @@ function AppRoutes() {
           <ProtectedRoute>
             <AppLayout>
               <UserManagementPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <ReportsPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <AnalyticsPage />
+            </AppLayout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <SettingsPage />
             </AppLayout>
           </ProtectedRoute>
         }

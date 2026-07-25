@@ -101,17 +101,17 @@ export default function Navbar() {
         )}
 
         <div className="sidebar-section-title" style={{ marginTop: '16px' }}>REPORTS & ANALYTICS</div>
-        <Link to="/incidents" className="sidebar-link">
+        <Link to="/reports" className={`sidebar-link ${isActive('/reports')}`}>
           <FileText size={18} />
           <span>Reports</span>
         </Link>
 
-        <Link to="/" className="sidebar-link">
+        <Link to="/analytics" className={`sidebar-link ${isActive('/analytics')}`}>
           <BarChart2 size={18} />
           <span>Analytics</span>
         </Link>
 
-        <Link to="#" className="sidebar-link" style={{ opacity: 0.6 }}>
+        <Link to="/settings" className={`sidebar-link ${isActive('/settings')}`}>
           <Settings size={18} />
           <span>Settings</span>
         </Link>
