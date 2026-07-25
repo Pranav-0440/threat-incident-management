@@ -49,11 +49,8 @@ public class UserService implements UserDetailsService {
             throw new IllegalArgumentException("Email already registered: " + request.getEmail());
         }
 
-        // Default role is ANALYST if not specified
-        String role = request.getRole() != null ? request.getRole().toUpperCase() : "ANALYST";
-        if (!role.equals("ADMIN") && !role.equals("ANALYST")) {
-            role = "ANALYST";
-        }
+        // Always assign ANALYST role for public registration to prevent privilege escalation
+        String role = "ANALYST";
 
         User user = User.builder()
                 .username(request.getUsername())
