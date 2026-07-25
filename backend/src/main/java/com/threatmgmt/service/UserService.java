@@ -28,10 +28,11 @@ public class UserService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
+    public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
+        User user = userRepository.findByUsername(usernameOrEmail)
+                .or(() -> userRepository.findByEmail(usernameOrEmail))
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "User not found: " + username));
+                        "User not found with username or email: " + usernameOrEmail));
 
         Set<String> allRoles = new HashSet<>(user.getRoles() != null ? user.getRoles() : List.of("ROLE_ANALYST"));
         if (allRoles.contains("ROLE_SUPER_ADMIN")) {
@@ -83,10 +84,11 @@ public class UserService implements UserDetailsService {
         return saved;
     }
 
-    public User findByUsername(String username) {
-        return userRepository.findByUsername(username)
+    public User findByUsername(String usernameOrEmail) {
+        return userRepository.findByUsername(usernameOrEmail)
+                .or(() -> userRepository.findByEmail(usernameOrEmail))
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "User not found: " + username));
+                        "User not found with username or email: " + usernameOrEmail));
     }
 
     public List<User> getAllUsers() {

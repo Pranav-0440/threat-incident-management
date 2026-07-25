@@ -47,12 +47,12 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" htmlFor="login-username">Username</label>
+            <label className="form-label" htmlFor="login-username">Username or Email</label>
             <input
               id="login-username"
               type="text"
               className="form-input"
-              placeholder="Enter your username"
+              placeholder="Enter your username or email address"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
