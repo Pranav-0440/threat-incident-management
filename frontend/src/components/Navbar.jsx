@@ -7,9 +7,13 @@ import {
   LayoutDashboard,
   AlertTriangle,
   PlusCircle,
+  Users,
   LogOut,
   Bell,
-  CheckCheck
+  CheckCheck,
+  FileText,
+  Settings,
+  BarChart2
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -55,169 +59,141 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="navbar">
-      <div className="navbar-inner">
-        <Link to="/" className="navbar-brand">
-          <div className="brand-icon">
+    <aside className="sidebar-nav">
+      {/* Brand Header */}
+      <div className="sidebar-brand">
+        <Link to="/" className="sidebar-brand-link">
+          <div className="sidebar-brand-icon">
             <Shield size={20} />
           </div>
-          <span>ThreatGuard</span>
+          <span className="sidebar-brand-text">ThreatGuard</span>
+        </Link>
+      </div>
+
+      {/* Main Navigation Links */}
+      <div className="sidebar-links">
+        <div className="sidebar-section-title">MAIN NAVIGATION</div>
+        
+        <Link to="/" className={`sidebar-link ${isActive('/')}`}>
+          <LayoutDashboard size={18} />
+          <span>Dashboard</span>
         </Link>
 
-        <div className="navbar-links">
-          <Link to="/" className={isActive('/')}>
-            <LayoutDashboard size={16} />
-            Dashboard
-          </Link>
-          <Link to="/incidents" className={isActive('/incidents')}>
-            <AlertTriangle size={16} />
-            Incidents
-          </Link>
-          <Link to="/incidents/new" className={isActive('/incidents/new')}>
-            <PlusCircle size={16} />
-            Report
-          </Link>
-          {isAdmin() && (
-            <Link to="/admin/users" className={isActive('/admin/users')}>
-              <Shield size={16} />
-              User Admin
+        <Link to="/incidents" className={`sidebar-link ${isActive('/incidents')}`}>
+          <AlertTriangle size={18} />
+          <span>Incidents</span>
+        </Link>
+
+        <Link to="/incidents/new" className={`sidebar-link ${isActive('/incidents/new')}`}>
+          <PlusCircle size={18} />
+          <span>Report Incident</span>
+        </Link>
+
+        {/* Role-Gated Admin Section */}
+        {isAdmin() && (
+          <>
+            <div className="sidebar-section-title" style={{ marginTop: '16px' }}>ADMINISTRATION</div>
+            <Link to="/admin/users" className={`sidebar-link ${isActive('/admin/users')}`}>
+              <Users size={18} />
+              <span>User Admin</span>
             </Link>
-          )}
-        </div>
+          </>
+        )}
 
-        <div className="navbar-user" style={{ position: 'relative' }}>
-          {/* Bell Notification Icon */}
-          <div style={{ position: 'relative' }}>
-            <button
-              className="btn btn-ghost"
-              onClick={() => setShowNotifications(!showNotifications)}
-              title="Notifications"
-              style={{ position: 'relative', padding: '8px' }}
-            >
-              <Bell size={18} />
-              {unreadCount > 0 && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '2px',
-                    right: '2px',
-                    backgroundColor: '#ef4444',
-                    color: '#fff',
-                    borderRadius: '50%',
-                    fontSize: '0.65rem',
-                    fontWeight: 700,
-                    minWidth: '16px',
-                    height: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0 4px',
-                  }}
-                >
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+        <div className="sidebar-section-title" style={{ marginTop: '16px' }}>REPORTS & ANALYTICS</div>
+        <Link to="/incidents" className="sidebar-link">
+          <FileText size={18} />
+          <span>Reports</span>
+        </Link>
 
-            {/* Notification Dropdown Drawer */}
-            {showNotifications && (
-              <div
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: '110%',
-                  width: '320px',
-                  backgroundColor: 'var(--color-bg-surface, #1e293b)',
-                  border: '1px solid var(--color-border, #334155)',
-                  borderRadius: '12px',
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
-                  zIndex: 1000,
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px 16px',
-                    borderBottom: '1px solid var(--color-border, #334155)',
-                    backgroundColor: 'rgba(255,255,255,0.02)',
-                  }}
-                >
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>Notifications</span>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={handleMarkAllRead}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--color-primary, #6366f1)',
-                        cursor: 'pointer',
-                        fontSize: '0.75rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <CheckCheck size={14} /> Mark all read
-                    </button>
-                  )}
-                </div>
+        <Link to="/" className="sidebar-link">
+          <BarChart2 size={18} />
+          <span>Analytics</span>
+        </Link>
 
-                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                  {notifications.length === 0 ? (
-                    <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8', fontSize: '0.85rem' }}>
-                      No notifications yet
-                    </div>
-                  ) : (
-                    notifications.map((n) => (
-                      <Link
-                        key={n.id}
-                        to={n.incidentId ? `/incidents/${n.incidentId}` : '#'}
-                        onClick={() => setShowNotifications(false)}
-                        style={{
-                          display: 'block',
-                          padding: '12px 16px',
-                          borderBottom: '1px solid var(--color-border, #334155)',
-                          textDecoration: 'none',
-                          color: 'inherit',
-                          backgroundColor: n.read ? 'transparent' : 'rgba(99, 102, 241, 0.08)',
-                        }}
-                      >
-                        <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '2px', color: '#f8fafc' }}>
-                          {n.title}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>
-                          {n.message}
-                        </div>
-                        <div style={{ fontSize: '0.65rem', color: '#64748b' }}>
-                          {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      </Link>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="user-info">
-            <div className="user-avatar">
-              {user?.username?.charAt(0) || 'U'}
-            </div>
-            <div>
-              <div className="user-name">{user?.username}</div>
-              <span className={`role-badge ${isAdmin() ? 'admin' : 'analyst'}`}>
-                {isAdmin() ? 'Admin' : 'Analyst'}
-              </span>
-            </div>
-          </div>
-          <button className="btn btn-ghost" onClick={logout} title="Logout">
-            <LogOut size={16} />
-          </button>
-        </div>
+        <Link to="#" className="sidebar-link" style={{ opacity: 0.6 }}>
+          <Settings size={18} />
+          <span>Settings</span>
+        </Link>
       </div>
-    </nav>
+
+      {/* Notification Drawer Trigger */}
+      <div className="sidebar-notifications-wrapper" style={{ position: 'relative', padding: '0 16px', marginBottom: '12px' }}>
+        <button
+          className="btn btn-secondary btn-sm"
+          onClick={() => setShowNotifications(!showNotifications)}
+          style={{ width: '100%', justifyContent: 'space-between', padding: '8px 12px' }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Bell size={16} /> Notifications
+          </span>
+          {unreadCount > 0 && (
+            <span style={{ background: '#ef4444', color: '#fff', padding: '1px 6px', borderRadius: '10px', fontSize: '10px', fontWeight: 700 }}>
+              {unreadCount}
+            </span>
+          )}
+        </button>
+
+        {showNotifications && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: '16px',
+              right: '16px',
+              backgroundColor: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '12px',
+              boxShadow: '0 -10px 25px rgba(0, 0, 0, 0.5)',
+              zIndex: 1000,
+              overflow: 'hidden',
+              marginBottom: '8px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #334155' }}>
+              <span style={{ fontWeight: 600, fontSize: '12px' }}>Notifications</span>
+              {unreadCount > 0 && (
+                <button onClick={handleMarkAllRead} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '11px' }}>
+                  <CheckCheck size={12} /> Mark read
+                </button>
+              )}
+            </div>
+            <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
+              {notifications.length === 0 ? (
+                <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>No notifications</div>
+              ) : (
+                notifications.map((n) => (
+                  <Link
+                    key={n.id}
+                    to={n.incidentId ? `/incidents/${n.incidentId}` : '#'}
+                    onClick={() => setShowNotifications(false)}
+                    style={{ display: 'block', padding: '10px 14px', borderBottom: '1px solid #334155', textDecoration: 'none', color: 'inherit' }}
+                  >
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: '#f8fafc' }}>{n.title}</div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>{n.message}</div>
+                  </Link>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* User Profile Footer Snippet */}
+      <div className="sidebar-user-footer">
+        <div className="user-avatar" style={{ width: '36px', height: '36px', fontSize: '14px' }}>
+          {user?.username?.charAt(0) || 'U'}
+        </div>
+        <div className="sidebar-user-info">
+          <div className="sidebar-user-name">{user?.username}</div>
+          <div className="sidebar-user-role">
+            {isAdmin() ? 'Administrator' : 'SOC Analyst'}
+          </div>
+        </div>
+        <button className="btn btn-ghost btn-sm" onClick={logout} title="Logout" style={{ padding: '6px' }}>
+          <LogOut size={16} />
+        </button>
+      </div>
+    </aside>
   );
 }
