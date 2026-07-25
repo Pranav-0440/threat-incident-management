@@ -1,11 +1,13 @@
 package com.threatmgmt.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -13,13 +15,16 @@ public class CorsConfig {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CorsConfig.class);
 
+    @Value("${app.cors.allowed-origins:http://localhost:5173}")
+    private String allowedOrigins;
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // Allow ALL origins via pattern — works with credentials unlike setAllowedOrigins("*")
-        configuration.setAllowedOriginPatterns(List.of("*"));
-        log.info("CORS configured with allowedOriginPatterns: [*] (all origins allowed)");
+        List<String> originsList = Arrays.asList(allowedOrigins.split(","));
+        configuration.setAllowedOrigins(originsList);
+        log.info("CORS configured with allowedOrigins: {}", originsList);
 
         configuration.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
