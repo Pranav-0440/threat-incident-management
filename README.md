@@ -15,34 +15,8 @@ Built with a high-performance **Spring Boot 3.3** backend, **MongoDB Atlas**, **
 
 ## 📸 Enterprise Platform Highlights
 
-```
-+-------------------------------------------------------------------------------------------------------------+
-| 🛡️ ThreatGuard    |  Enterprise Platform Highlights                           📅 July 25, 2025  ▼           |
-|-------------------|-----------------------------------------------------------------------------------------|
-|                   |                                                                                         |
-| 🏠 Dashboard      |   +-------------------+  +-------------------+  +------------------+  +-------------------+ |
-| ⚠️ Incidents       |   |  TOTAL INCIDENTS  |  |   OPEN INCIDENTS  |  | CRITICAL ALERTS  |  |     AVG RISK      | |
-| 📄 Reports        |   |        14         |  |         6         |  |        3         |  |      74 /100      | |
-| 👥 Users          |   +-------------------+  +-------------------+  +------------------+  +-------------------+ |
-| 📈 Analytics      |                                                                                         |
-| ⚙️ Settings       |   Presets: [ 🔒 P1 Critical ] [ 🔀 Assigned To Me ] [ 🛡️ High Risk (>70) ] [ ✦ Today ]     |
-|                   |                                                                                         |
-|                   |   +-----------------------------------------------------------------------------------+ |
-|                   |   | [P1] Unauthorized Server Room Access Attempt             Risk: 85        [  OPEN  ] | |
-|                   |   |                                                                                   | |
-|                   |   | 📍 Location: Building A - Data Center  |  👤 Assigned: Rahul (SOC Team)            | |
-|                   |   |                                                                                   | |
-|                   |   | An unknown individual attempted to enter the server room using an unauthorized    | |
-|                   |   | access card. Security cameras captured the individual trying multiple badge scan  | |
-|                   |   | attempts before leaving the premises.                                             | |
-|                   |   |                                                                                   | |
-|                   |   | [ 👁️ Quick View ]       [ 📄 PDF Report ]       [ 🔗 Share Link ]                   | |
-|                   |   +-----------------------------------------------------------------------------------+ |
-|                   |                                                                                         |
-| 👤 pranav         |                                                                                         |
-|    SOC Analyst    |                                                                      ✨ AI Copilot 💬   |
-+-------------------------------------------------------------------------------------------------------------+
-```
+<img width="1920" height="972" alt="{26F62EFB-360E-45D1-B650-0BC3C2ACE114}" src="https://github.com/user-attachments/assets/415c6acf-da2a-4c86-96ce-82f375a27fde" />
+
 
 ---
 
