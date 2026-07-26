@@ -210,20 +210,21 @@ public class IncidentService {
         delete(id, "system");
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void delete(String id, String deletedBy) {
         Incident incident = findById(id);
 
         auditLogService.logEvent(id, deletedBy, deletedBy, "INCIDENT_DELETED",
                 "Incident deleted: " + incident.getTitle(), null);
 
-        incidentRepo.delete(incident);
-
         try {
             searchRepo.deleteById(id);
         } catch (Exception e) {
-            log.warn("Failed to delete incident {} from Elasticsearch: {}", id, e.getMessage());
+            log.error("ES Delete failed. Aborting transaction.", e);
+            throw new RuntimeException("ES Sync Failed");
         }
-
+        
+        incidentRepo.delete(incident);
         log.info("Deleted incident: {}", id);
     }
 
