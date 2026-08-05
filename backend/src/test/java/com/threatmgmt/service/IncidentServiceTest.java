@@ -173,4 +173,16 @@ class IncidentServiceTest {
         verify(searchRepo, times(1)).findByTitleContainingOrDescriptionContaining(any(), any());
         verify(incidentRepo, times(1)).findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(any(), any());
     }
+
+    @Test
+    void getAll_withPageable_callsRepository() {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+        org.springframework.data.domain.Page<Incident> mockPage = new org.springframework.data.domain.PageImpl<>(List.of());
+        when(incidentRepo.findAll(pageable)).thenReturn(mockPage);
+
+        org.springframework.data.domain.Page<Incident> result = incidentService.getAll(pageable);
+
+        assertNotNull(result);
+        verify(incidentRepo, times(1)).findAll(pageable);
+    }
 }

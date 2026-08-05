@@ -8,6 +8,8 @@ import com.threatmgmt.repository.IncidentRepository;
 import com.threatmgmt.repository.IncidentSearchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -53,6 +55,10 @@ public class IncidentService {
         }
 
         return saved;
+    }
+
+    public Page<Incident> getAll(Pageable pageable) {
+        return incidentRepo.findAll(pageable);
     }
 
     public List<Incident> getAll() {

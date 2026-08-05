@@ -5,6 +5,10 @@ import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.service.IncidentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -30,8 +34,9 @@ public class IncidentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Incident>> getAll() {
-        return ResponseEntity.ok(incidentService.getAll());
+    public ResponseEntity<Page<Incident>> getAll(
+            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(incidentService.getAll(pageable));
     }
 
     @GetMapping("/{id}")
