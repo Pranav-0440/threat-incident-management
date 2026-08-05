@@ -20,8 +20,8 @@ export default function LoginPage() {
       await login(username, password);
       navigate('/');
     } catch (err) {
-      if (err.message === 'Network Error' || err.code === 'ERR_NETWORK') {
-        setError('Network Error: Cannot connect to backend server. Verify your backend is running or set VITE_API_BASE_URL in Vercel environment variables.');
+      if (err.message === 'Network Error' || err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED' || !err.response) {
+        setError('⚡ Backend server is starting up or compiling after deployment. Please wait 15–30 seconds and click Sign In again!');
       } else {
         setError(err.response?.data?.message || err.message || 'Invalid username or password');
       }
