@@ -15,6 +15,7 @@ const API_BASE_URL = getApiBaseUrl();
 
 const client = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 30000, // 30 second timeout to handle backend cold starts & redeployments
   headers: {
     'Content-Type': 'application/json',
   },
@@ -32,18 +33,35 @@ client.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle 401 by clearing auth
+// Response interceptor — auto-retry on cold-starts/redeployments and handle 401 auth expiry
 client.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  async (error) => {
+    const { config, response } = error;
+
+    // Handle 401 Unauthorized
+    if (response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (!window.location.pathname.startsWith('/login') &&
+      if (typeof window !== 'undefined' &&
+        !window.location.pathname.startsWith('/login') &&
         !window.location.pathname.startsWith('/register')) {
         window.location.href = '/login';
       }
+      return Promise.reject(error);
     }
+
+    // Auto-retry on Network Errors, Timeouts, or 502/503/504 Gateway errors (Server redeploying/sleeping)
+    const isServerRebuildingOrSleeping = !response || (response.status >= 502 && response.status <= 504) || error.code === 'ECONNABORTED';
+
+    if (isServerRebuildingOrSleeping && config && (!config._retryCount || config._retryCount < 3)) {
+      config._retryCount = (config._retryCount || 0) + 1;
+      const delay = Math.pow(2, config._retryCount) * 1000; // 2s, 4s, 8s exponential backoff
+      console.warn(`[ThreatGuard API] Server is starting or deploying (Retry ${config._retryCount}/3). Retrying in ${delay / 1000}s...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return client(config);
+    }
+
     return Promise.reject(error);
   }
 );
