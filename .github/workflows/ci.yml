@@ -127,7 +127,7 @@ jobs:
           path: backend/target/
 
       - name: Build Backend Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           push: false
@@ -136,7 +136,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Build Frontend Docker Image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           push: false
