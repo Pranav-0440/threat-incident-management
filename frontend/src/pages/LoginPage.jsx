@@ -22,6 +22,8 @@ export default function LoginPage() {
     } catch (err) {
       if (err.message === 'Network Error' || err.code === 'ERR_NETWORK' || err.code === 'ECONNABORTED' || !err.response) {
         setError('⚡ Backend server is starting up or compiling after deployment. Please wait 15–30 seconds and click Sign In again!');
+      } else if (err.response?.status === 403 || err.response?.status === 401) {
+        setError(err.response?.data?.message || 'Invalid username or password');
       } else {
         setError(err.response?.data?.message || err.message || 'Invalid username or password');
       }

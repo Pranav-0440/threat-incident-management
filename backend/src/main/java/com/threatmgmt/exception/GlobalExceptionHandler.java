@@ -36,8 +36,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<Map<String, Object>> handleBadCredentials(BadCredentialsException ex) {
+    @ExceptionHandler({BadCredentialsException.class, org.springframework.security.core.AuthenticationException.class, org.springframework.security.core.userdetails.UsernameNotFoundException.class})
+    public ResponseEntity<Map<String, Object>> handleBadCredentials(Exception ex) {
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, "Invalid username or password");
     }
 
