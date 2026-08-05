@@ -14,6 +14,8 @@ import org.springframework.context.annotation.Import;
 import com.threatmgmt.config.SecurityConfig;
 import com.threatmgmt.config.PasswordConfig;
 import com.threatmgmt.security.JwtFilter;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -73,7 +75,7 @@ class IncidentControllerTest {
 
     @Test
     @WithMockUser(roles = "ANALYST")
-    void getAll_returnsList() throws Exception {
+    void getAll_returnsPage() throws Exception {
         Incident incident1 = Incident.builder()
                 .id("1").title("Incident 1").description("Test 1")
                 .severity("LOW").status("OPEN").build();
@@ -81,11 +83,11 @@ class IncidentControllerTest {
                 .id("2").title("Incident 2").description("Test 2")
                 .severity("HIGH").status("INVESTIGATING").build();
 
-        when(incidentService.getAll()).thenReturn(List.of(incident1, incident2));
+        when(incidentService.getAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(incident1, incident2)));
 
         mockMvc.perform(get("/api/v1/incidents"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2));
+                .andExpect(jsonPath("$.content.length()").value(2));
     }
 
     @Test

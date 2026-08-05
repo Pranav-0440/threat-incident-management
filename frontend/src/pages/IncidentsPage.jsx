@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import IncidentCard from '../components/IncidentCard';
 import SearchBar from '../components/SearchBar';
 import { exportIncidentsCSV } from '../utils/exportUtils';
-import { PlusCircle, AlertTriangle, Download, Star } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Download, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const SEVERITY_FILTERS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const PRIORITY_FILTERS = ['ALL', 'P1', 'P2', 'P3', 'P4'];
@@ -16,6 +16,12 @@ export default function IncidentsPage() {
   const { user } = useAuth();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Pagination State
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
 
   // Workspace Tabs
   const [workspaceTab, setWorkspaceTab] = useState('ALL'); // ALL, ASSIGNED_TO_ME, REPORTED_BY_ME, RESOLVED
@@ -31,12 +37,19 @@ export default function IncidentsPage() {
 
   useEffect(() => {
     const fetchIncidents = async () => {
+      setLoading(true);
       try {
-        const res = await incidentsAPI.getAll();
-        const sorted = (res.data || []).sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        setIncidents(sorted);
+        const res = await incidentsAPI.getAll(page, pageSize);
+        const data = res.data;
+        if (Array.isArray(data)) {
+          setIncidents(data);
+          setTotalPages(1);
+          setTotalElements(data.length);
+        } else {
+          setIncidents(data.content || []);
+          setTotalPages(data.totalPages || 1);
+          setTotalElements(data.totalElements || 0);
+        }
       } catch (err) {
         console.error('Failed to fetch incidents:', err);
       } finally {
@@ -45,7 +58,7 @@ export default function IncidentsPage() {
     };
 
     fetchIncidents();
-  }, []);
+  }, [page, pageSize]);
 
   const handleApplyPreset = (presetName) => {
     setSeverityFilter('ALL');
@@ -320,11 +333,81 @@ export default function IncidentsPage() {
 
       {/* Incident List */}
       {filtered.length > 0 ? (
-        <div className="incident-list stagger">
-          {filtered.map((incident) => (
-            <IncidentCard key={incident.id} incident={incident} />
-          ))}
-        </div>
+        <>
+          <div className="incident-list stagger">
+            {filtered.map((incident) => (
+              <IncidentCard key={incident.id} incident={incident} />
+            ))}
+          </div>
+
+          {/* Pagination Controls Bar */}
+          <div
+            style={{
+              display: 'flex',
+              justify: 'space-between',
+              alignItems: 'center',
+              marginTop: 'var(--space-6)',
+              padding: '12px 16px',
+              backgroundColor: 'var(--color-bg-card)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--color-border)',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}
+          >
+            <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+              Showing Page <strong style={{ color: 'var(--color-text-primary)' }}>{page + 1}</strong> of{' '}
+              <strong style={{ color: 'var(--color-text-primary)' }}>{totalPages}</strong> ({totalElements} total incidents)
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <label style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Per Page:</label>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(0);
+                  }}
+                  style={{
+                    background: 'var(--color-bg-input)',
+                    color: 'var(--color-text-primary)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+                  disabled={page === 0}
+                  style={{ opacity: page === 0 ? 0.5 : 1, cursor: page === 0 ? 'not-allowed' : 'pointer' }}
+                >
+                  <ChevronLeft size={16} /> Previous
+                </button>
+
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
+                  disabled={page >= totalPages - 1}
+                  style={{ opacity: page >= totalPages - 1 ? 0.5 : 1, cursor: page >= totalPages - 1 ? 'not-allowed' : 'pointer' }}
+                >
+                  Next <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       ) : (
         <div className="empty-state">
           <div className="empty-state-icon">
