@@ -3,6 +3,7 @@ package com.threatmgmt.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
+import com.threatmgmt.security.IncidentPermissionEvaluator;
 import com.threatmgmt.security.JwtUtil;
 import com.threatmgmt.service.IncidentService;
 import com.threatmgmt.service.UserService;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -42,6 +44,9 @@ class IncidentControllerTest {
 
     @MockBean
     private UserService userService;
+
+    @MockBean
+    private IncidentPermissionEvaluator incidentPermissionEvaluator;   // NEW — required by SecurityConfig
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -152,5 +157,62 @@ class IncidentControllerTest {
     void delete_asAdmin_succeeds() throws Exception {
         mockMvc.perform(delete("/api/v1/incidents/test-id-1"))
                 .andExpect(status().isNoContent());
+    }
+
+    // ===== NEW — proves the #10 IDOR fix on PUT /{id} =====
+
+    @Test
+    @WithMockUser(username = "analystB", roles = "ANALYST")
+    void update_asUnrelatedAnalyst_forbidden() throws Exception {
+        when(incidentPermissionEvaluator.hasPermission(any(), any(), anyString(), any()))
+                .thenReturn(false);
+
+        Incident incident = Incident.builder()
+                .id("test-id-1").title("Updated title").description("Updated desc")
+                .status("OPEN").build();
+
+        mockMvc.perform(put("/api/v1/incidents/test-id-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(incident)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "analystA", roles = "ANALYST")
+    void update_asAssignedAnalyst_succeeds() throws Exception {
+        when(incidentPermissionEvaluator.hasPermission(any(), any(), anyString(), any()))
+                .thenReturn(true);
+
+        Incident incident = Incident.builder()
+                .id("test-id-1").title("Updated title").description("Updated desc")
+                .status("OPEN").assignedTo("analystA").build();
+
+        when(incidentService.updateIncident(eq("test-id-1"), any(), eq("analystA")))
+                .thenReturn(incident);
+
+        mockMvc.perform(put("/api/v1/incidents/test-id-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(incident)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Updated title"));
+    }
+
+    @Test
+    @WithMockUser(username = "admin1", roles = "ADMIN")
+    void update_asAdmin_succeeds() throws Exception {
+        when(incidentPermissionEvaluator.hasPermission(any(), any(), anyString(), any()))
+                .thenReturn(true);
+
+        Incident incident = Incident.builder()
+                .id("test-id-1").title("Updated by admin").description("Updated desc")
+                .status("OPEN").build();
+
+        when(incidentService.updateIncident(eq("test-id-1"), any(), eq("admin1")))
+                .thenReturn(incident);
+
+        mockMvc.perform(put("/api/v1/incidents/test-id-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(incident)))
+                .andExpect(status().isOk());
     }
 }

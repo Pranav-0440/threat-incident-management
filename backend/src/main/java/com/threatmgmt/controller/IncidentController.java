@@ -65,7 +65,7 @@ public class IncidentController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ANALYST') or hasRole('ADMIN')")
+    @PreAuthorize("(hasRole('ANALYST') or hasRole('ADMIN')) and hasPermission(#id, 'incident', 'write')")
     public ResponseEntity<Incident> update(
             @PathVariable String id,
             @Valid @RequestBody Incident incident,
@@ -83,7 +83,7 @@ public class IncidentController {
     }
 
     @PatchMapping("/{id}/assign")
-    @PreAuthorize("hasRole('ANALYST') or hasRole('ADMIN')")
+    @PreAuthorize("(hasRole('ANALYST') or hasRole('ADMIN')) and hasPermission(#id, 'incident', 'write')")
     public ResponseEntity<Incident> assignAnalyst(
             @PathVariable String id,
             @RequestBody Map<String, String> payload,
