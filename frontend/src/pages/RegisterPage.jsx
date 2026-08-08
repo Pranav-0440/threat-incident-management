@@ -64,12 +64,15 @@ export default function RegisterPage() {
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          {/* Account Role Selector */}
-          <div className="form-group" style={{ marginBottom: 'var(--space-4)' }}>
-            <label className="form-label">Select Dashboard Role</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
-              <div
+          {/* Account Role Selector Fieldset */}
+          <fieldset className="form-group" style={{ marginBottom: 'var(--space-4)', border: 'none', padding: 0, margin: 0 }}>
+            <legend className="form-label" style={{ marginBottom: '6px' }}>Select Dashboard Role</legend>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <button
+                type="button"
+                id="role-analyst-btn"
                 onClick={() => handleRoleSelect('ANALYST')}
+                aria-pressed={formData.role === 'ANALYST'}
                 style={{
                   padding: '12px',
                   borderRadius: '8px',
@@ -77,7 +80,8 @@ export default function RegisterPage() {
                   backgroundColor: formData.role === 'ANALYST' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(15, 23, 42, 0.4)',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  outline: 'none'
                 }}
               >
                 <div style={{ color: formData.role === 'ANALYST' ? '#60a5fa' : '#94a3b8', marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
@@ -89,10 +93,13 @@ export default function RegisterPage() {
                 <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
                   Monitor & report threats
                 </div>
-              </div>
+              </button>
 
-              <div
+              <button
+                type="button"
+                id="role-admin-btn"
                 onClick={() => handleRoleSelect('ADMIN')}
+                aria-pressed={formData.role === 'ADMIN'}
                 style={{
                   padding: '12px',
                   borderRadius: '8px',
@@ -100,7 +107,8 @@ export default function RegisterPage() {
                   backgroundColor: formData.role === 'ADMIN' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(15, 23, 42, 0.4)',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  outline: 'none'
                 }}
               >
                 <div style={{ color: formData.role === 'ADMIN' ? '#f87171' : '#94a3b8', marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
@@ -112,11 +120,11 @@ export default function RegisterPage() {
                 <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
                   Full org & user console
                 </div>
-              </div>
+              </button>
             </div>
-          </div>
+          </fieldset>
 
-          <div className="form-group">
+          <div className="form-group" style={{ marginTop: 'var(--space-4)' }}>
             <label className="form-label" htmlFor="reg-fullname">Full Name</label>
             <input
               id="reg-fullname"
