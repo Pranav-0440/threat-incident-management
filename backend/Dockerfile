@@ -16,8 +16,8 @@ WORKDIR /app
 # Copy built JAR from build stage
 COPY --from=build /app/target/threat-incident-management-1.0.0.jar app.jar
 
-# Expose port 8080
+# Expose default port
 EXPOSE 8080
 
-# Run Spring Boot app
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Run Spring Boot app with dynamic PORT binding
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar app.jar"]
