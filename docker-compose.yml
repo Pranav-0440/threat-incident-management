@@ -1,20 +1,38 @@
 version: '3.8'
+
 services:
+  # Option A: Local PostgreSQL Container (Matches Supabase schema)
+  postgres:
+    image: postgres:16-alpine
+    container_name: threatguard-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - threatguard-network
+
+  # Option B: Local MongoDB Container
   mongodb:
-    image: mongo:7
-    container_name: incident-mongodb
+    image: mongo:7.0
+    container_name: threatguard-mongodb
     ports:
       - "27017:27017"
     environment:
-      MONGO_INITDB_DATABASE: incidentdb
+      MONGO_INITDB_DATABASE: threatguard
     volumes:
       - mongodb_data:/data/db
     networks:
-      - incident-network
+      - threatguard-network
 
+  # Option C: Local Elasticsearch Container (Optional search engine)
   elasticsearch:
-    image: elasticsearch:8.12.0
-    container_name: incident-elasticsearch
+    image: elasticsearch:8.13.0
+    container_name: threatguard-elasticsearch
     ports:
       - "9200:9200"
     environment:
@@ -24,12 +42,13 @@ services:
     volumes:
       - es_data:/usr/share/elasticsearch/data
     networks:
-      - incident-network
+      - threatguard-network
 
 volumes:
+  postgres_data:
   mongodb_data:
   es_data:
 
 networks:
-  incident-network:
+  threatguard-network:
     driver: bridge

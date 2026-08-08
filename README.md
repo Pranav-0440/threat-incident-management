@@ -4,12 +4,12 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 [![React](https://img.shields.io/badge/React-19.2-61dafb.svg)](https://react.dev/)
-[![MongoDB](https://img.shields.io/badge/Database-MongoDB%207.0-green.svg)](https://www.mongodb.com/)
+[![Supabase](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E.svg)](https://supabase.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **ThreatGuard** is a full-stack, enterprise-grade Security Operations Center (SOC) platform designed for Security Analysts, SOC Managers, and Administrators to report, investigate, triage, collaborate, and resolve physical and cybersecurity threats.
 
-Built with a high-performance **Spring Boot 3.3** backend, **MongoDB Atlas**, **Elasticsearch**, and a responsive **React 19** dashboard frontend with interactive AI SOC Copilot intelligence.
+Built with a high-performance **Spring Boot 3.3** backend, **Supabase PostgreSQL** (with optional local Docker container options), and a responsive **React 19** dashboard frontend with interactive AI SOC Copilot intelligence.
 
 ---
 
@@ -28,8 +28,8 @@ graph TD
     Nginx -->|JWT Bearer Auth| SpringBoot[Spring Boot 3.3.5 Backend Service]
     
     subgraph Core Security & Storage Layer
-        SpringBoot -->|Spring Data MongoDB| MongoDB[(MongoDB Atlas / Mongo 7)]
-        SpringBoot -->|Elasticsearch Client| Elastic[(Elasticsearch 8.13)]
+        SpringBoot -->|Primary DB: Spring Data JPA| Supabase[(Supabase PostgreSQL / Local Postgres)]
+        SpringBoot -->|Optional Local Container| DockerDB[(Local Docker: Postgres / Mongo 7)]
         SpringBoot -->|Local Disk Storage| UploadsDir[./uploads/incidents/ File Store]
     end
 
@@ -45,9 +45,9 @@ graph TD
 ## 🚀 Key Feature Modules (Complete 10-Phase Roadmap)
 
 ### 1. 🔒 Hardened Authentication & Role-Based Access Control (RBAC)
-- **Server-Side Security Enforcement**: Public self-registration **strictly enforces `ROLE_ANALYST` on the server**, completely ignoring client payloads attempting to request `ADMIN` permissions to prevent privilege escalation.
-- **Initial Seed Setup**: The first registered system account automatically receives `ROLE_SUPER_ADMIN`.
-- **Admin User Management Console (`/admin/users`)**: Dedicated admin control panel to view registered analyst accounts, manage roles (`ANALYST` / `ADMIN`), and review active assigned workloads (`activeAssigned` / `totalAssigned`).
+- **Role Selection Cards**: Register as a **SOC Analyst** or **Administrator** directly on the sign-up page.
+- **First-User Bootstrap**: The first registered system account automatically receives `ROLE_SUPER_ADMIN`.
+- **Admin User Management Console (`/admin/users`)**: Dedicated admin control panel to view registered analyst accounts, manage roles (`ANALYST` / `ADMIN`), and review active assigned workloads.
 
 ### 2. 🕵️ Security Analyst Investigation Workspace
 - **Tabbed Workspace (`IncidentDetailPage.jsx`)**:
@@ -114,8 +114,8 @@ $$\text{Risk Score} = \text{Severity Weight} + \text{Category Weight}$$
 ### Authentication (`/api/v1/auth`)
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/auth/register` | Public | Registers a new user (Enforces `ROLE_ANALYST`) |
-| `POST` | `/api/v1/auth/login` | Public | Authenticates credentials and returns JWT Bearer token |
+| `POST` | `/api/v1/auth/register` | Public | Registers a new user with selected role (`ANALYST` or `ADMIN`) |
+| `POST` | `/api/v1/auth/login` | Public | Authenticates credentials against database and returns JWT token |
 
 ### Incidents (`/api/v1/incidents`)
 | Method | Endpoint | Access | Description |
@@ -123,7 +123,7 @@ $$\text{Risk Score} = \text{Severity Weight} + \text{Category Weight}$$
 | `GET` | `/api/v1/incidents` | Authenticated | List all security incidents |
 | `GET` | `/api/v1/incidents/{id}` | Authenticated | Get detailed incident by ID |
 | `GET` | `/api/v1/incidents/{id}/related` | Authenticated | Get matching historical incidents |
-| `GET` | `/api/v1/incidents/search?q=` | Authenticated | Full-text syntax search (`severity:critical status:open`) |
+| `GET` | `/api/v1/incidents/search?q=` | Authenticated | Full-text PostgreSQL native search |
 | `GET` | `/api/v1/incidents/stats` | Authenticated | Get dashboard KPI statistics and risk metrics |
 | `POST` | `/api/v1/incidents` | Analyst, Admin | Create a new security incident |
 | `PUT` | `/api/v1/incidents/{id}` | Analyst, Admin | Update incident details |
@@ -140,37 +140,61 @@ $$\text{Risk Score} = \text{Severity Weight} + \text{Category Weight}$$
 
 ---
 
-## 🛠️ Local Development & Quick Start
+## 🛠️ Local Development & Database Setup Options
+
+Contributors can choose between two flexible database options:
 
 ### Prerequisites
 - **Java 21 JDK**
 - **Maven 3.9+**
-- **Node.js 20+**
-- **Docker Desktop**
+- **Node.js 22+**
+- **Docker Desktop** *(Optional - for local container setup)*
 
-### 1. Clone & Start Infrastructure
+---
+
+### Option 1: Supabase Cloud Database (Zero Setup - Recommended)
+1. Set database credentials in `backend/.env`:
+   ```env
+   SPRING_DATASOURCE_URL=jdbc:postgresql://aws-0-ap-south-1.pooler.supabase.com:6543/postgres?user=postgres.iqmubvaknlwogmyqcfbp
+   SPRING_DATASOURCE_USERNAME=postgres.iqmubvaknlwogmyqcfbp
+   SPRING_DATASOURCE_PASSWORD=your_supabase_password
+   ```
+
+---
+
+### Option 2: Local Docker Container (PostgreSQL / MongoDB)
+If you prefer running a local database container offline:
+
 ```bash
-git clone https://github.com/Pranav-0440/threat-incident-management.git
-cd threat-incident-management
-
-# Start MongoDB 7 & Elasticsearch 8 containers
+# Spin up local PostgreSQL 16 & Mongo 7 containers
 docker compose up -d
 ```
 
-### 2. Start Backend Service (Spring Boot)
-```bash
-cd backend
-mvn spring-boot:run
+Update `backend/.env` for local PostgreSQL:
+```env
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/postgres
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=postgrespassword
 ```
-> The API server starts on `http://localhost:8080` (API Base: `http://localhost:8080/api/v1`).
 
-### 3. Start Frontend Dashboard (React + Vite)
-```bash
-cd frontend
-npm install
-npm run dev
-```
-> The frontend dashboard runs on `http://localhost:5173`.
+---
+
+### 🚀 Running the Application
+
+1. **Start Backend Service (Spring Boot)**
+   ```bash
+   cd backend
+   mvn spring-boot:run
+   ```
+   > The API server starts on `http://localhost:8080`.
+
+2. **Start Frontend Dashboard (React + Vite)**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   > The dashboard runs on `http://localhost:5173`.
 
 ---
 

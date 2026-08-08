@@ -3,6 +3,27 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Shield, UserPlus, UserCheck, ShieldAlert } from 'lucide-react';
 
+const ROLE_OPTIONS = [
+  {
+    id: 'ANALYST',
+    title: 'SOC Analyst',
+    subtitle: 'Monitor & report threats',
+    Icon: UserCheck,
+    activeColor: '#60a5fa',
+    borderColor: '#3b82f6',
+    bgColor: 'rgba(59, 130, 246, 0.12)'
+  },
+  {
+    id: 'ADMIN',
+    title: 'Administrator',
+    subtitle: 'Full org & user console',
+    Icon: ShieldAlert,
+    activeColor: '#f87171',
+    borderColor: '#ef4444',
+    bgColor: 'rgba(239, 68, 68, 0.12)'
+  }
+];
+
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     username: '',
@@ -17,11 +38,11 @@ export default function RegisterPage() {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleRoleSelect = (selectedRole) => {
-    setFormData({ ...formData, role: selectedRole });
+    setFormData((prev) => ({ ...prev, role: selectedRole }));
   };
 
   const handleSubmit = async (e) => {
@@ -34,12 +55,11 @@ export default function RegisterPage() {
       navigate('/');
     } catch (err) {
       if (err.response?.data?.fieldErrors) {
-        const errorMsg = Object.values(err.response.data.fieldErrors).join('. ');
-        setError(errorMsg);
+        setError(Object.values(err.response.data.fieldErrors).join('. '));
       } else if (err.response?.data?.message) {
         setError(err.response.data.message);
       } else if (err.message) {
-        setError(`${err.message}. Check backend API URL and network connection.`);
+        setError(`${err.message}. Check backend connection.`);
       } else {
         setError('Registration failed. Please try again.');
       }
@@ -64,63 +84,41 @@ export default function RegisterPage() {
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          {/* Account Role Selector Fieldset */}
           <fieldset className="form-group" style={{ marginBottom: 'var(--space-4)', border: 'none', padding: 0, margin: 0 }}>
             <legend className="form-label" style={{ marginBottom: '6px' }}>Select Dashboard Role</legend>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <button
-                type="button"
-                id="role-analyst-btn"
-                onClick={() => handleRoleSelect('ANALYST')}
-                aria-pressed={formData.role === 'ANALYST'}
-                style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: formData.role === 'ANALYST' ? '2px solid #3b82f6' : '1px solid var(--color-border)',
-                  backgroundColor: formData.role === 'ANALYST' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(15, 23, 42, 0.4)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  textAlign: 'center',
-                  outline: 'none'
-                }}
-              >
-                <div style={{ color: formData.role === 'ANALYST' ? '#60a5fa' : '#94a3b8', marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
-                  <UserCheck size={20} />
-                </div>
-                <div style={{ fontWeight: 600, fontSize: '13px', color: formData.role === 'ANALYST' ? '#fff' : '#cbd5e1' }}>
-                  SOC Analyst
-                </div>
-                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
-                  Monitor & report threats
-                </div>
-              </button>
-
-              <button
-                type="button"
-                id="role-admin-btn"
-                onClick={() => handleRoleSelect('ADMIN')}
-                aria-pressed={formData.role === 'ADMIN'}
-                style={{
-                  padding: '12px',
-                  borderRadius: '8px',
-                  border: formData.role === 'ADMIN' ? '2px solid #ef4444' : '1px solid var(--color-border)',
-                  backgroundColor: formData.role === 'ADMIN' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(15, 23, 42, 0.4)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  textAlign: 'center',
-                  outline: 'none'
-                }}
-              >
-                <div style={{ color: formData.role === 'ADMIN' ? '#f87171' : '#94a3b8', marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
-                  <ShieldAlert size={20} />
-                </div>
-                <div style={{ fontWeight: 600, fontSize: '13px', color: formData.role === 'ADMIN' ? '#fff' : '#cbd5e1' }}>
-                  Administrator
-                </div>
-                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
-                  Full org & user console
-                </div>
-              </button>
+              {ROLE_OPTIONS.map(({ id, title, subtitle, Icon, activeColor, borderColor, bgColor }) => {
+                const isSelected = formData.role === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    id={`role-${id.toLowerCase()}-btn`}
+                    onClick={() => handleRoleSelect(id)}
+                    aria-pressed={isSelected}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '8px',
+                      border: isSelected ? `2px solid ${borderColor}` : '1px solid var(--color-border)',
+                      backgroundColor: isSelected ? bgColor : 'rgba(15, 23, 42, 0.4)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      textAlign: 'center',
+                      outline: 'none'
+                    }}
+                  >
+                    <div style={{ color: isSelected ? activeColor : '#94a3b8', marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
+                      <Icon size={20} />
+                    </div>
+                    <div style={{ fontWeight: 600, fontSize: '13px', color: isSelected ? '#fff' : '#cbd5e1' }}>
+                      {title}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                      {subtitle}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </fieldset>
 
