@@ -13,8 +13,15 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
+# Create non-privileged group and user (SonarQube docker:S6471 compliance)
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 # Copy built JAR from build stage
 COPY --from=build /app/target/threat-incident-management-1.0.0.jar app.jar
+RUN chown -R appuser:appgroup /app
+
+# Switch to non-root user
+USER appuser
 
 # Expose default port
 EXPOSE 8080
