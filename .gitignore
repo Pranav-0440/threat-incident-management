@@ -12,6 +12,8 @@ dist/
 frontend/dist/
 dist-ssr/
 *.local
+package-lock.json
+!frontend/package-lock.json
 
 # Java & Maven build outputs
 target/
@@ -27,6 +29,14 @@ backend/uploads/
 # IDEs & System files
 .idea/
 .vscode/
+.settings/
+backend/.settings/
+.classpath
+backend/.classpath
+.project
+backend/.project
+.factorypath
+backend/.factorypath
 *.swp
 *.suo
 *.ntvs*
@@ -41,5 +51,3 @@ logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-backend/target/
-backend/target/
