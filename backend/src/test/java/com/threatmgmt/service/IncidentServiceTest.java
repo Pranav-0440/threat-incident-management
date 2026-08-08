@@ -3,7 +3,6 @@ package com.threatmgmt.service;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.repository.IncidentRepository;
-import com.threatmgmt.repository.IncidentSearchRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -22,9 +21,6 @@ class IncidentServiceTest {
 
     @Mock
     private IncidentRepository incidentRepo;
-
-    @Mock
-    private IncidentSearchRepository searchRepo;
 
     @Mock
     private AuditLogService auditLogService;
@@ -103,7 +99,6 @@ class IncidentServiceTest {
             saved.setId("generated-id");
             return saved;
         });
-        when(searchRepo.save(any(IncidentSearchDoc.class))).thenReturn(new IncidentSearchDoc());
 
         Incident result = incidentService.createIncident(incident);
 
@@ -111,7 +106,6 @@ class IncidentServiceTest {
         assertEquals(55, result.getRiskScore());
         assertNotNull(result.getCreatedAt());
         verify(incidentRepo, times(1)).save(any());
-        verify(searchRepo, times(1)).save(any());
     }
 
     @Test
@@ -126,7 +120,6 @@ class IncidentServiceTest {
 
         when(incidentRepo.findById("test-id")).thenReturn(Optional.of(existing));
         when(incidentRepo.save(any())).thenAnswer(i -> i.getArgument(0));
-        when(searchRepo.save(any(IncidentSearchDoc.class))).thenReturn(new IncidentSearchDoc());
 
         Incident result = incidentService.updateStatus("test-id", "INVESTIGATING");
 
@@ -135,42 +128,20 @@ class IncidentServiceTest {
     }
 
     @Test
-    void searchIncidents_viaElasticsearch_success() {
-        IncidentSearchDoc doc = new IncidentSearchDoc();
-        doc.setId("1");
-        doc.setTitle("Phishing Threat");
-        doc.setDescription("Suspicious email received");
+    void searchIncidents_success() {
+        Incident incident = Incident.builder()
+                .id("1")
+                .title("Phishing Threat")
+                .description("Suspicious email received")
+                .build();
 
-        when(searchRepo.findByTitleContainingOrDescriptionContaining("Phishing", "Phishing"))
-                .thenReturn(List.of(doc));
+        when(incidentRepo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase("Phishing", "Phishing"))
+                .thenReturn(List.of(incident));
 
         List<IncidentSearchDoc> results = incidentService.searchIncidents("Phishing");
 
         assertEquals(1, results.size());
         assertEquals("Phishing Threat", results.get(0).getTitle());
-        verify(searchRepo, times(1)).findByTitleContainingOrDescriptionContaining(any(), any());
-        verifyNoInteractions(incidentRepo);
-    }
-
-    @Test
-    void searchIncidents_viaElasticsearch_failure_fallsBackToMongoDB() {
-        Incident fallbackIncident = Incident.builder()
-                .id("mongo-1")
-                .title("Phishing Threat (Mongo)")
-                .description("Suspicious email received (Mongo)")
-                .build();
-
-        when(searchRepo.findByTitleContainingOrDescriptionContaining("Phishing", "Phishing"))
-                .thenThrow(new RuntimeException("Elasticsearch is down"));
-
-        when(incidentRepo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase("Phishing", "Phishing"))
-                .thenReturn(List.of(fallbackIncident));
-
-        List<IncidentSearchDoc> results = incidentService.searchIncidents("Phishing");
-
-        assertEquals(1, results.size());
-        assertEquals("Phishing Threat (Mongo)", results.get(0).getTitle());
-        verify(searchRepo, times(1)).findByTitleContainingOrDescriptionContaining(any(), any());
         verify(incidentRepo, times(1)).findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(any(), any());
     }
 }

@@ -24,7 +24,7 @@ public class AuditLogService {
                 .actorName(actorName != null ? actorName : "System")
                 .action(action)
                 .description(description)
-                .details(details)
+                .details(details != null ? details.toString() : null)
                 .timestamp(LocalDateTime.now())
                 .build();
         log.info("Audit log recorded: [{}] {} for incident {}", action, description, incidentId);

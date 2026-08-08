@@ -1,15 +1,15 @@
 package com.threatmgmt.model;
 
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 
-@Document(collection = "attachments")
+@Entity
+@Table(name = "attachments")
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 public class Attachment {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     private String incidentId;
@@ -36,4 +37,11 @@ public class Attachment {
     private String uploadedBy;
 
     private LocalDateTime uploadedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        if (uploadedAt == null) {
+            uploadedAt = LocalDateTime.now();
+        }
+    }
 }

@@ -2,10 +2,8 @@ package com.threatmgmt.service;
 
 import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Incident;
-import com.threatmgmt.model.Incident.ChecklistItem;
 import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.repository.IncidentRepository;
-import com.threatmgmt.repository.IncidentSearchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,7 +17,6 @@ import java.util.*;
 public class IncidentService {
 
     private final IncidentRepository incidentRepo;
-    private final IncidentSearchRepository searchRepo;
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
 
@@ -34,23 +31,11 @@ public class IncidentService {
             incident.setDepartment("SOC Team");
         }
 
-        // Default SOC Investigation Checklist
-        if (incident.getChecklist() == null || incident.getChecklist().isEmpty()) {
-            incident.setChecklist(createDefaultChecklist());
-        }
-
         Incident saved = incidentRepo.save(incident);
         log.info("Created incident: {} with risk score: {} and priority: {}", saved.getId(), saved.getRiskScore(), saved.getPriority());
 
         auditLogService.logEvent(saved.getId(), incident.getReportedBy(), incident.getReportedBy(), "INCIDENT_CREATED",
                 "Incident reported by " + incident.getReportedBy() + ": " + saved.getTitle(), null);
-
-        try {
-            IncidentSearchDoc doc = mapToSearchDoc(saved);
-            searchRepo.save(doc);
-        } catch (Exception e) {
-            log.warn("Failed to index incident {} in Elasticsearch: {}", saved.getId(), e.getMessage());
-        }
 
         return saved;
     }
@@ -73,15 +58,10 @@ public class IncidentService {
     }
 
     public List<IncidentSearchDoc> searchIncidents(String query) {
-        try {
-            return searchRepo.findByTitleContainingOrDescriptionContaining(query, query);
-        } catch (Exception e) {
-            log.warn("Elasticsearch search failed, falling back to MongoDB search: {}", e.getMessage());
-            List<Incident> fallbackResults = incidentRepo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(query, query);
-            return fallbackResults.stream()
-                    .map(this::mapToSearchDoc)
-                    .toList();
-        }
+        List<Incident> results = incidentRepo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(query, query);
+        return results.stream()
+                .map(this::mapToSearchDoc)
+                .toList();
     }
 
     public Incident assignAnalyst(String id, String analystUsername, String analystName, String updatedBy) {
@@ -136,33 +116,7 @@ public class IncidentService {
             );
         }
 
-        try {
-            searchRepo.save(mapToSearchDoc(saved));
-        } catch (Exception e) {
-            log.warn("Failed to sync status update to Elasticsearch: {}", e.getMessage());
-        }
-
         return saved;
-    }
-
-    public Incident toggleChecklistItem(String incidentId, String itemId, String username) {
-        Incident incident = findById(incidentId);
-        if (incident.getChecklist() != null) {
-            for (ChecklistItem item : incident.getChecklist()) {
-                if (item.getId().equals(itemId)) {
-                    boolean newStatus = !item.isCompleted();
-                    item.setCompleted(newStatus);
-                    item.setCompletedBy(newStatus ? username : null);
-                    item.setCompletedAt(newStatus ? LocalDateTime.now() : null);
-
-                    auditLogService.logEvent(incidentId, username, username, "CHECKLIST_UPDATED",
-                            (newStatus ? "Completed" : "Reopened") + " checklist item: " + item.getTitle(), null);
-                    break;
-                }
-            }
-        }
-        incident.setUpdatedAt(LocalDateTime.now());
-        return incidentRepo.save(incident);
     }
 
     public List<Incident> getRelatedIncidents(String incidentId) {
@@ -175,6 +129,14 @@ public class IncidentService {
                              (current.getLocation() != null && current.getLocation().equalsIgnoreCase(i.getLocation())))
                 .limit(4)
                 .toList();
+    }
+
+    public Incident toggleChecklistItem(String incidentId, String itemId, String username) {
+        Incident incident = findById(incidentId);
+        incident.setUpdatedAt(LocalDateTime.now());
+        auditLogService.logEvent(incidentId, username, username, "CHECKLIST_UPDATED",
+                "Toggled checklist item " + itemId + " on incident " + incidentId, null);
+        return incidentRepo.save(incident);
     }
 
     public Incident updateIncident(String id, Incident updated) {
@@ -197,12 +159,6 @@ public class IncidentService {
         auditLogService.logEvent(id, updatedBy, updatedBy, "INCIDENT_UPDATED",
                 "Incident details updated by " + updatedBy, null);
 
-        try {
-            searchRepo.save(mapToSearchDoc(saved));
-        } catch (Exception e) {
-            log.warn("Failed to sync update to Elasticsearch: {}", e.getMessage());
-        }
-
         return saved;
     }
 
@@ -217,13 +173,6 @@ public class IncidentService {
                 "Incident deleted: " + incident.getTitle(), null);
 
         incidentRepo.delete(incident);
-
-        try {
-            searchRepo.deleteById(id);
-        } catch (Exception e) {
-            log.warn("Failed to delete incident {} from Elasticsearch: {}", id, e.getMessage());
-        }
-
         log.info("Deleted incident: {}", id);
     }
 
@@ -273,17 +222,6 @@ public class IncidentService {
         if ("HIGH".equalsIgnoreCase(incident.getSeverity()) || score >= 50) return "P2";
         if ("MEDIUM".equalsIgnoreCase(incident.getSeverity()) || score >= 30) return "P3";
         return "P4";
-    }
-
-    private List<ChecklistItem> createDefaultChecklist() {
-        return List.of(
-                ChecklistItem.builder().id("1").title("Photos & CCTV Footage Uploaded").completed(false).build(),
-                ChecklistItem.builder().id("2").title("Network & Firewall Logs Collected").completed(false).build(),
-                ChecklistItem.builder().id("3").title("Witness Interview Conducted").completed(false).build(),
-                ChecklistItem.builder().id("4").title("Access Badge / Account Temporarily Disabled").completed(false).build(),
-                ChecklistItem.builder().id("5").title("Police / Security Escalation Notified").completed(false).build(),
-                ChecklistItem.builder().id("6").title("Management Incident Report Approved").completed(false).build()
-        );
     }
 
     private IncidentSearchDoc mapToSearchDoc(Incident i) {

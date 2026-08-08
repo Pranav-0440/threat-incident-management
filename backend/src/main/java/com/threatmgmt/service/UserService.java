@@ -63,12 +63,16 @@ public class UserService implements UserDetailsService {
             throw new IllegalArgumentException("Email already registered: " + request.getEmail());
         }
 
-        // Hardened Security Enforcement (Option 2):
-        // Public registration ALWAYS assigns the ANALYST role to prevent privilege escalation.
-        // Even if a malicious request attempts to send "role": "ADMIN", it is strictly ignored on the server.
-        // The first registered account or initial seed admin gets SUPER_ADMIN automatically if no users exist.
         boolean isFirstUser = userRepository.count() == 0;
-        String role = isFirstUser ? "SUPER_ADMIN" : "ANALYST";
+        String requestedRole = (request.getRole() != null && !request.getRole().isBlank())
+                ? request.getRole().trim().toUpperCase()
+                : "ANALYST";
+
+        if (!requestedRole.equals("ADMIN") && !requestedRole.equals("ANALYST")) {
+            requestedRole = "ANALYST";
+        }
+
+        String role = isFirstUser ? "SUPER_ADMIN" : requestedRole;
 
         User user = User.builder()
                 .username(request.getUsername())

@@ -1,17 +1,17 @@
 package com.threatmgmt.model;
 
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Document(collection = "incidents")
+@Entity
+@Table(name = "incidents")
 @Data
 @Builder
 @NoArgsConstructor
@@ -19,12 +19,14 @@ import java.util.List;
 public class Incident {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
 
     @NotBlank(message = "Title is required")
     private String title;
 
     @NotBlank(message = "Description is required")
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     private String location;
@@ -49,14 +51,22 @@ public class Incident {
 
     private String department;      // SOC Team, IT Security, etc.
 
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "incident_tags", joinColumns = @JoinColumn(name = "incident_id"))
+    @Column(name = "tag")
     private List<String> tags;
 
-    private List<ChecklistItem> checklist;
-
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "incident_related", joinColumns = @JoinColumn(name = "incident_id"))
+    @Column(name = "related_id")
     private List<String> relatedIncidentIds;
 
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "incident_watchers", joinColumns = @JoinColumn(name = "incident_id"))
+    @Column(name = "watcher")
     private List<String> watchers;
 
+    @Column(columnDefinition = "TEXT")
     private String aiSummary;
 
     private int riskScore;      // 0–100, calculated by service
@@ -65,15 +75,16 @@ public class Incident {
 
     private LocalDateTime updatedAt;
 
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ChecklistItem {
-        private String id;
-        private String title;
-        private boolean completed;
-        private String completedBy;
-        private LocalDateTime completedAt;
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

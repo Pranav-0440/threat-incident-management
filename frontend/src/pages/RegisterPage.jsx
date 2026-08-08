@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, UserPlus } from 'lucide-react';
+import { Shield, UserPlus, UserCheck, ShieldAlert } from 'lucide-react';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -9,6 +9,7 @@ export default function RegisterPage() {
     password: '',
     email: '',
     fullName: '',
+    role: 'ANALYST',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,6 +18,10 @@ export default function RegisterPage() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleRoleSelect = (selectedRole) => {
+    setFormData({ ...formData, role: selectedRole });
   };
 
   const handleSubmit = async (e) => {
@@ -45,7 +50,7 @@ export default function RegisterPage() {
 
   return (
     <div className="auth-page">
-      <div className="auth-card animate-scale-in">
+      <div className="auth-card animate-scale-in" style={{ maxWidth: '440px' }}>
         <div className="auth-logo">
           <div className="auth-logo-icon">
             <Shield size={24} />
@@ -54,11 +59,63 @@ export default function RegisterPage() {
         </div>
 
         <h1 className="auth-title">Create Account</h1>
-        <p className="auth-subtitle">Register to start managing incidents</p>
+        <p className="auth-subtitle">Select account type to start managing incidents</p>
 
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
+          {/* Account Role Selector */}
+          <div className="form-group" style={{ marginBottom: 'var(--space-4)' }}>
+            <label className="form-label">Select Dashboard Role</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '6px' }}>
+              <div
+                onClick={() => handleRoleSelect('ANALYST')}
+                style={{
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: formData.role === 'ANALYST' ? '2px solid #3b82f6' : '1px solid var(--color-border)',
+                  backgroundColor: formData.role === 'ANALYST' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(15, 23, 42, 0.4)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ color: formData.role === 'ANALYST' ? '#60a5fa' : '#94a3b8', marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
+                  <UserCheck size={20} />
+                </div>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: formData.role === 'ANALYST' ? '#fff' : '#cbd5e1' }}>
+                  SOC Analyst
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                  Monitor & report threats
+                </div>
+              </div>
+
+              <div
+                onClick={() => handleRoleSelect('ADMIN')}
+                style={{
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: formData.role === 'ADMIN' ? '2px solid #ef4444' : '1px solid var(--color-border)',
+                  backgroundColor: formData.role === 'ADMIN' ? 'rgba(239, 68, 68, 0.12)' : 'rgba(15, 23, 42, 0.4)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ color: formData.role === 'ADMIN' ? '#f87171' : '#94a3b8', marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
+                  <ShieldAlert size={20} />
+                </div>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: formData.role === 'ADMIN' ? '#fff' : '#cbd5e1' }}>
+                  Administrator
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                  Full org & user console
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="form-group">
             <label className="form-label" htmlFor="reg-fullname">Full Name</label>
             <input
@@ -123,8 +180,6 @@ export default function RegisterPage() {
             </span>
           </div>
 
-
-
           <button
             type="submit"
             className="btn btn-primary btn-lg"
@@ -137,7 +192,7 @@ export default function RegisterPage() {
             ) : (
               <>
                 <UserPlus size={18} />
-                Create Account
+                Create {formData.role === 'ADMIN' ? 'Administrator' : 'Analyst'} Account
               </>
             )}
           </button>
