@@ -4,12 +4,14 @@ import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.repository.IncidentRepository;
+import com.threatmgmt.repository.IncidentSearchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -19,6 +21,9 @@ public class IncidentService {
     private final IncidentRepository incidentRepo;
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
+
+    @Autowired(required = false)
+    private IncidentSearchRepository searchRepo;
 
     public Incident createIncident(Incident incident) {
         incident.setCreatedAt(LocalDateTime.now());
@@ -33,6 +38,9 @@ public class IncidentService {
 
         Incident saved = incidentRepo.save(incident);
         log.info("Created incident: {} with risk score: {} and priority: {}", saved.getId(), saved.getRiskScore(), saved.getPriority());
+
+        // Sync with Elasticsearch if available
+        indexToElasticsearch(saved);
 
         auditLogService.logEvent(saved.getId(), incident.getReportedBy(), incident.getReportedBy(), "INCIDENT_CREATED",
                 "Incident reported by " + incident.getReportedBy() + ": " + saved.getTitle(), null);
@@ -58,10 +66,37 @@ public class IncidentService {
     }
 
     public List<IncidentSearchDoc> searchIncidents(String query) {
+        if (searchRepo != null) {
+            try {
+                List<IncidentSearchDoc> docs = searchRepo.findByTitleContainingOrDescriptionContaining(query, query);
+                if (docs != null && !docs.isEmpty()) {
+                    return docs;
+                }
+            } catch (Exception e) {
+                log.warn("Elasticsearch query failed, falling back to Supabase PostgreSQL native search: {}", e.getMessage());
+            }
+        }
         List<Incident> results = incidentRepo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(query, query);
         return results.stream()
                 .map(this::mapToSearchDoc)
                 .toList();
+    }
+
+    public java.util.Map<String, Object> getStats() {
+        List<Incident> all = incidentRepo.findAll();
+        long total = all.size();
+        long open = all.stream().filter(i -> "OPEN".equals(i.getStatus())).count();
+        long investigating = all.stream().filter(i -> "INVESTIGATING".equals(i.getStatus())).count();
+        long resolved = all.stream().filter(i -> "RESOLVED".equals(i.getStatus()) || "CLOSED".equals(i.getStatus())).count();
+        long critical = all.stream().filter(i -> "CRITICAL".equals(i.getSeverity())).count();
+
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("total", total);
+        stats.put("open", open);
+        stats.put("investigating", investigating);
+        stats.put("resolved", resolved);
+        stats.put("critical", critical);
+        return stats;
     }
 
     public Incident assignAnalyst(String id, String analystUsername, String analystName, String updatedBy) {
@@ -72,17 +107,17 @@ public class IncidentService {
         incident.setUpdatedAt(LocalDateTime.now());
 
         Incident saved = incidentRepo.save(incident);
+        indexToElasticsearch(saved);
 
         auditLogService.logEvent(id, updatedBy, updatedBy, "ASSIGNED",
-                "Incident assigned to " + (analystName != null ? analystName : analystUsername),
-                Map.of("previousAssignedTo", prevAnalyst != null ? prevAnalyst : "Unassigned", "newAssignedTo", analystUsername));
+                "Incident assigned to " + (analystName != null ? analystName : analystUsername), null);
 
-        if (analystUsername != null && !analystUsername.isEmpty()) {
-            notificationService.createNotification(
+        if (analystUsername != null && !analystUsername.equals(prevAnalyst)) {
+            notificationService.sendNotification(
                     analystUsername,
-                    "New Incident Assignment",
-                    "You have been assigned to incident: " + incident.getTitle(),
                     "INCIDENT_ASSIGNED",
+                    "Assigned: " + incident.getTitle(),
+                    "Incident assigned to you by " + updatedBy + " with severity " + incident.getSeverity(),
                     id
             );
         }
@@ -100,18 +135,31 @@ public class IncidentService {
         incident.setStatus(status);
         incident.setUpdatedAt(LocalDateTime.now());
 
+        if ("RESOLVED".equals(status) || "CLOSED".equals(status)) {
+            incident.setResolvedAt(LocalDateTime.now());
+        }
+
         Incident saved = incidentRepo.save(incident);
+        indexToElasticsearch(saved);
 
         auditLogService.logEvent(id, updatedBy, updatedBy, "STATUS_UPDATED",
-                "Status updated from " + oldStatus + " to " + status,
-                Map.of("oldStatus", oldStatus, "newStatus", status));
+                "Status changed from " + oldStatus + " to " + status, null);
 
-        if (incident.getAssignedTo() != null && !incident.getAssignedTo().equals(updatedBy)) {
-            notificationService.createNotification(
+        if (incident.getReportedBy() != null) {
+            notificationService.sendNotification(
+                    incident.getReportedBy(),
+                    "STATUS_UPDATE",
+                    "Status Update: " + incident.getTitle(),
+                    "Incident status updated to " + status,
+                    id
+            );
+        }
+        if (incident.getAssignedTo() != null && !incident.getAssignedTo().equals(incident.getReportedBy())) {
+            notificationService.sendNotification(
                     incident.getAssignedTo(),
-                    "Incident Status Updated",
-                    "Status for incident '" + incident.getTitle() + "' changed to " + status,
-                    "STATUS_CHANGED",
+                    "STATUS_UPDATE",
+                    "Status Update: " + incident.getTitle(),
+                    "Incident status updated to " + status,
                     id
             );
         }
@@ -152,76 +200,80 @@ public class IncidentService {
         existing.setCategory(updated.getCategory());
         existing.setPriority(updated.getPriority() != null ? updated.getPriority() : calculatePriority(updated));
         existing.setRiskScore(calculateRiskScore(existing));
+        existing.setDepartment(updated.getDepartment());
+        existing.setTags(updated.getTags());
+        existing.setRelatedIncidentIds(updated.getRelatedIncidentIds());
+        existing.setWatchers(updated.getWatchers());
         existing.setUpdatedAt(LocalDateTime.now());
 
         Incident saved = incidentRepo.save(existing);
+        indexToElasticsearch(saved);
 
         auditLogService.logEvent(id, updatedBy, updatedBy, "INCIDENT_UPDATED",
-                "Incident details updated by " + updatedBy, null);
+                "Incident updated by " + updatedBy, null);
 
         return saved;
     }
 
-    public void delete(String id) {
-        delete(id, "system");
-    }
-
     public void delete(String id, String deletedBy) {
         Incident incident = findById(id);
-
         auditLogService.logEvent(id, deletedBy, deletedBy, "INCIDENT_DELETED",
-                "Incident deleted: " + incident.getTitle(), null);
-
-        incidentRepo.delete(incident);
-        log.info("Deleted incident: {}", id);
-    }
-
-    public Map<String, Object> getStats() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("total", incidentRepo.count());
-        stats.put("open", incidentRepo.countByStatus("OPEN"));
-        stats.put("investigating", incidentRepo.countByStatus("INVESTIGATING"));
-        stats.put("waiting_evidence", incidentRepo.countByStatus("WAITING_EVIDENCE"));
-        stats.put("resolved", incidentRepo.countByStatus("RESOLVED"));
-        stats.put("closed", incidentRepo.countByStatus("CLOSED"));
-        stats.put("critical", incidentRepo.countBySeverity("CRITICAL"));
-        stats.put("high", incidentRepo.countBySeverity("HIGH"));
-        stats.put("medium", incidentRepo.countBySeverity("MEDIUM"));
-        stats.put("low", incidentRepo.countBySeverity("LOW"));
-
-        List<Incident> all = incidentRepo.findAll();
-        double avgRisk = all.stream()
-                .mapToInt(Incident::getRiskScore)
-                .average()
-                .orElse(0.0);
-        stats.put("averageRiskScore", Math.round(avgRisk));
-
-        return stats;
+                "Incident deleted by " + deletedBy + ": " + incident.getTitle(), null);
+        incidentRepo.deleteById(id);
+        if (searchRepo != null) {
+            try {
+                searchRepo.deleteById(id);
+            } catch (Exception e) {
+                log.warn("Failed to delete incident from Elasticsearch: {}", e.getMessage());
+            }
+        }
     }
 
     public int calculateRiskScore(Incident incident) {
         int score = 0;
-
-        if ("CRITICAL".equalsIgnoreCase(incident.getSeverity())) score += 50;
-        else if ("HIGH".equalsIgnoreCase(incident.getSeverity())) score += 35;
-        else if ("MEDIUM".equalsIgnoreCase(incident.getSeverity())) score += 20;
-        else if ("LOW".equalsIgnoreCase(incident.getSeverity())) score += 10;
-
-        if ("WORKPLACE_VIOLENCE".equalsIgnoreCase(incident.getCategory())) score += 30;
-        else if ("THREAT".equalsIgnoreCase(incident.getCategory())) score += 20;
-        else if ("SUSPICIOUS_ACTIVITY".equalsIgnoreCase(incident.getCategory())) score += 15;
-        else if ("CYBER_THREAT".equalsIgnoreCase(incident.getCategory())) score += 25;
-        else if ("PHYSICAL_SECURITY".equalsIgnoreCase(incident.getCategory())) score += 15;
-
+        if (incident.getSeverity() != null) {
+            switch (incident.getSeverity().toUpperCase()) {
+                case "CRITICAL" -> score += 50;
+                case "HIGH" -> score += 35;
+                case "MEDIUM" -> score += 20;
+                case "LOW" -> score += 10;
+            }
+        }
+        if (incident.getCategory() != null) {
+            switch (incident.getCategory().toUpperCase()) {
+                case "WORKPLACE_VIOLENCE" -> score += 30;
+                case "CYBER_THREAT", "DATA_BREACH" -> score += 25;
+                case "THREAT" -> score += 20;
+                case "SUSPICIOUS_ACTIVITY", "PHYSICAL_SECURITY" -> score += 15;
+            }
+        }
         return Math.min(score, 100);
     }
 
     public String calculatePriority(Incident incident) {
-        int score = incident.getRiskScore();
-        if ("CRITICAL".equalsIgnoreCase(incident.getSeverity()) || score >= 70) return "P1";
-        if ("HIGH".equalsIgnoreCase(incident.getSeverity()) || score >= 50) return "P2";
-        if ("MEDIUM".equalsIgnoreCase(incident.getSeverity()) || score >= 30) return "P3";
-        return "P4";
+        String severity = incident.getSeverity() != null ? incident.getSeverity().toUpperCase() : "LOW";
+        int risk = incident.getRiskScore();
+
+        if ("CRITICAL".equals(severity) || risk >= 70) {
+            return "P1";
+        } else if ("HIGH".equals(severity) || risk >= 50) {
+            return "P2";
+        } else if ("MEDIUM".equals(severity) || risk >= 30) {
+            return "P3";
+        } else {
+            return "P4";
+        }
+    }
+
+    private void indexToElasticsearch(Incident incident) {
+        if (searchRepo != null) {
+            try {
+                IncidentSearchDoc doc = mapToSearchDoc(incident);
+                searchRepo.save(doc);
+            } catch (Exception e) {
+                log.warn("Failed to index incident {} to Elasticsearch: {}", incident.getId(), e.getMessage());
+            }
+        }
     }
 
     private IncidentSearchDoc mapToSearchDoc(Incident i) {

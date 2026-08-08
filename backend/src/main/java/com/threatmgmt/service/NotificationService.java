@@ -27,6 +27,10 @@ public class NotificationService {
         return notificationRepository.save(notification);
     }
 
+    public Notification sendNotification(String recipientUsername, String type, String title, String message, String incidentId) {
+        return createNotification(recipientUsername, title, message, type, incidentId);
+    }
+
     public List<Notification> getUserNotifications(String username) {
         return notificationRepository.findByRecipientUsernameOrderByCreatedAtDesc(username);
     }

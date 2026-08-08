@@ -14,6 +14,10 @@ spring:
       idle-timeout: 30000
       max-lifetime: 60000
       connection-timeout: 20000
+  elasticsearch:
+    uris: ${SPRING_ELASTICSEARCH_URIS:http://localhost:9200}
+    username: ${SPRING_ELASTICSEARCH_USERNAME:}
+    password: ${SPRING_ELASTICSEARCH_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: update

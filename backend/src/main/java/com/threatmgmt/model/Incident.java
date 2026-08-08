@@ -75,6 +75,8 @@ public class Incident {
 
     private LocalDateTime updatedAt;
 
+    private LocalDateTime resolvedAt;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {
