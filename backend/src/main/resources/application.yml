@@ -8,9 +8,9 @@ spring:
       - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchDataAutoConfiguration
       - org.springframework.boot.autoconfigure.data.elasticsearch.ElasticsearchRepositoriesAutoConfiguration
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://aws-0-ap-south-1.pooler.supabase.com:6543/postgres?user=postgres.iqmubvaknlwogmyqcfbp}
-    username: ${SPRING_DATASOURCE_USERNAME:postgres.iqmubvaknlwogmyqcfbp}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 5
@@ -30,7 +30,7 @@ server:
   port: ${PORT:8080}
 
 jwt:
-  secret: YTJkM2Y1ZjctOGI5Ni00ZjEyLWFhMzMtNWQ2YjRhZGVmZjcxLXRocmVhdC1pbmNpZGVudC1tZ210LXNlY3JldC1rZXktMjAyNA==
+  secret: ${JWT_SECRET}
   expiration: 86400000
 
 app:
