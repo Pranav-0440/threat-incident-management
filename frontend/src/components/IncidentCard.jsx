@@ -1,12 +1,23 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import SeverityBadge from './SeverityBadge';
 import StatusBadge from './StatusBadge';
 import PriorityBadge from './PriorityBadge';
-import { MapPin, Clock, User, Shield, Download, Share2, Eye } from 'lucide-react';
+import { MapPin, Clock, User, Shield, Download, Share2, Eye, Copy, Check } from 'lucide-react';
 import { exportIncidentPDF } from '../utils/exportUtils';
 
 export default function IncidentCard({ incident }) {
   const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyId = (e) => {
+    e.stopPropagation();
+    if (incident?.id) {
+      navigator.clipboard.writeText(incident.id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'N/A';
@@ -39,10 +50,34 @@ export default function IncidentCard({ incident }) {
     >
       <div className={`incident-card-severity-strip ${(incident.severity || '').toLowerCase()}`} />
       <div className="incident-card-body">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
           <PriorityBadge priority={incident.priority || 'P3'} />
           <SeverityBadge severity={incident.severity} />
           <StatusBadge status={incident.status} />
+
+          <button
+            onClick={handleCopyId}
+            title="Copy Incident ID"
+            type="button"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '2px 6px',
+              fontSize: '11px',
+              fontFamily: 'monospace',
+              fontWeight: 600,
+              backgroundColor: copied ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+              color: copied ? '#10b981' : '#94a3b8',
+              border: `1px solid ${copied ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
+              borderRadius: '4px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {copied ? <Check size={11} style={{ color: '#10b981' }} /> : <Copy size={11} />}
+            <span>{copied ? 'Copied!' : incident.id}</span>
+          </button>
         </div>
         <div className="incident-card-title">{incident.title}</div>
         <div className="incident-card-description">{incident.description}</div>
