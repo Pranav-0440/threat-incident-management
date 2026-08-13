@@ -27,10 +27,10 @@ import {
   CheckSquare,
   Square,
   Download,
-  Share2,
-  Copy,
-  Check
+  Share2
 } from 'lucide-react';
+import CopyButton from '../components/CopyButton';
+import { copyTextToClipboard } from '../utils/clipboard';
 
 export default function IncidentDetailPage() {
   const { id } = useParams();
@@ -61,17 +61,7 @@ export default function IncidentDetailPage() {
   const [generatingAi, setGeneratingAi] = useState(false);
   const [aiSummaryText, setAiSummaryText] = useState('');
 
-  // 1-Click Copy Incident ID State
-  const [copiedId, setCopiedId] = useState(false);
 
-  const handleCopyId = () => {
-    const targetId = incident?.id || id;
-    if (targetId) {
-      navigator.clipboard.writeText(targetId);
-      setCopiedId(true);
-      setTimeout(() => setCopiedId(false), 2000);
-    }
-  };
 
   const fetchComments = async () => {
     try {
@@ -276,8 +266,8 @@ export default function IncidentDetailPage() {
           </button>
           <button
             className="btn btn-secondary btn-sm"
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
+            onClick={async () => {
+              await copyTextToClipboard(window.location.href);
               alert('Incident link copied to clipboard!');
             }}
           >
@@ -294,33 +284,25 @@ export default function IncidentDetailPage() {
               <PriorityBadge priority={incident.priority || 'P3'} />
               <SeverityBadge severity={incident.severity} />
               <StatusBadge status={incident.status} />
-
-              <button
-                onClick={handleCopyId}
-                title="Copy Incident ID to clipboard"
-                type="button"
+              <CopyButton
+                text={incident.id || id}
+                ariaLabel="Copy Incident ID"
+                iconSize={13}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
                   padding: '2px 8px',
                   fontSize: '12px',
-                  fontFamily: 'monospace',
-                  fontWeight: 600,
-                  backgroundColor: copiedId ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                  color: copiedId ? '#10b981' : '#94a3b8',
-                  border: `1px solid ${copiedId ? 'rgba(16, 185, 129, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
                   borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
                 }}
               >
-                {copiedId ? <Check size={13} style={{ color: '#10b981' }} /> : <Copy size={13} />}
-                <span>{incident.id || id}</span>
-                <span style={{ fontSize: '10px', color: copiedId ? '#10b981' : '#64748b' }}>
-                  {copiedId ? 'Copied!' : 'Copy'}
-                </span>
-              </button>
+                {({ copied }) => (
+                  <>
+                    <span>{incident.id || id}</span>
+                    <span style={{ fontSize: '10px', color: copied ? '#10b981' : '#64748b' }}>
+                      {copied ? 'Copied!' : 'Copy'}
+                    </span>
+                  </>
+                )}
+              </CopyButton>
             </div>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-text-primary)', margin: '4px 0' }}>
               {incident.title}
