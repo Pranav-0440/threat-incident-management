@@ -29,6 +29,8 @@ import {
   Download,
   Share2
 } from 'lucide-react';
+import CopyButton from '../components/CopyButton';
+import { copyTextToClipboard } from '../utils/clipboard';
 
 export default function IncidentDetailPage() {
   const { id } = useParams();
@@ -58,6 +60,8 @@ export default function IncidentDetailPage() {
   // AI Summary State
   const [generatingAi, setGeneratingAi] = useState(false);
   const [aiSummaryText, setAiSummaryText] = useState('');
+
+
 
   const fetchComments = async () => {
     try {
@@ -262,8 +266,8 @@ export default function IncidentDetailPage() {
           </button>
           <button
             className="btn btn-secondary btn-sm"
-            onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
+            onClick={async () => {
+              await copyTextToClipboard(window.location.href);
               alert('Incident link copied to clipboard!');
             }}
           >
@@ -276,10 +280,29 @@ export default function IncidentDetailPage() {
       <div className="card" style={{ marginBottom: 'var(--space-6)', padding: 'var(--space-6)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
               <PriorityBadge priority={incident.priority || 'P3'} />
               <SeverityBadge severity={incident.severity} />
               <StatusBadge status={incident.status} />
+              <CopyButton
+                text={incident.id || id}
+                ariaLabel="Copy Incident ID"
+                iconSize={13}
+                style={{
+                  padding: '2px 8px',
+                  fontSize: '12px',
+                  borderRadius: '6px',
+                }}
+              >
+                {({ copied }) => (
+                  <>
+                    <span>{incident.id || id}</span>
+                    <span style={{ fontSize: '10px', color: copied ? '#10b981' : '#64748b' }}>
+                      {copied ? 'Copied!' : 'Copy'}
+                    </span>
+                  </>
+                )}
+              </CopyButton>
             </div>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--color-text-primary)', margin: '4px 0' }}>
               {incident.title}

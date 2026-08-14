@@ -4,6 +4,8 @@ import StatusBadge from './StatusBadge';
 import PriorityBadge from './PriorityBadge';
 import { MapPin, Clock, User, Shield, Download, Share2, Eye } from 'lucide-react';
 import { exportIncidentPDF } from '../utils/exportUtils';
+import CopyButton from './CopyButton';
+import { copyTextToClipboard } from '../utils/clipboard';
 
 export default function IncidentCard({ incident }) {
   const navigate = useNavigate();
@@ -19,10 +21,10 @@ export default function IncidentCard({ incident }) {
     });
   };
 
-  const handleShare = (e) => {
+  const handleShare = async (e) => {
     e.stopPropagation();
     const url = `${window.location.origin}/incidents/${incident.id}`;
-    navigator.clipboard.writeText(url);
+    await copyTextToClipboard(url);
     alert('Incident link copied to clipboard!');
   };
 
@@ -39,10 +41,23 @@ export default function IncidentCard({ incident }) {
     >
       <div className={`incident-card-severity-strip ${(incident.severity || '').toLowerCase()}`} />
       <div className="incident-card-body">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
           <PriorityBadge priority={incident.priority || 'P3'} />
           <SeverityBadge severity={incident.severity} />
           <StatusBadge status={incident.status} />
+
+          <CopyButton
+            text={incident.id}
+            ariaLabel="Copy Incident ID"
+            stopPropagation={true}
+            iconSize={11}
+            style={{
+              gap: '4px',
+              padding: '2px 6px',
+              fontSize: '11px',
+              borderRadius: '4px',
+            }}
+          />
         </div>
         <div className="incident-card-title">{incident.title}</div>
         <div className="incident-card-description">{incident.description}</div>
