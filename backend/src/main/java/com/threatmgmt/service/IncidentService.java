@@ -101,6 +101,13 @@ public class IncidentService {
 
     public Incident assignAnalyst(String id, String analystUsername, String analystName, String updatedBy) {
         Incident incident = findById(id);
+        
+        // IDOR Fix: Verify assignment rights
+        boolean isAdmin = updatedBy.equals("system"); 
+        if (!isAdmin && !updatedBy.equals(incident.getReportedBy()) && (incident.getAssignedTo() != null && !updatedBy.equals(incident.getAssignedTo()))) {
+            throw new org.springframework.security.access.AccessDeniedException("Permission denied.");
+        }
+        
         String prevAnalyst = incident.getAssignedTo();
         incident.setAssignedTo(analystUsername);
         incident.setAssignedToName(analystName);
@@ -193,6 +200,13 @@ public class IncidentService {
 
     public Incident updateIncident(String id, Incident updated, String updatedBy) {
         Incident existing = findById(id);
+        
+        // IDOR Fix: Verify ownership
+        boolean isAdmin = updatedBy.equals("system");
+        if (!isAdmin && !updatedBy.equals(existing.getReportedBy()) && !updatedBy.equals(existing.getAssignedTo())) {
+            throw new org.springframework.security.access.AccessDeniedException("Permission denied.");
+        }
+        
         existing.setTitle(updated.getTitle());
         existing.setDescription(updated.getDescription());
         existing.setLocation(updated.getLocation());
