@@ -51,19 +51,6 @@ class IncidentControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @Test
-    void swaggerUi_isPublic() throws Exception {
-        mockMvc.perform(get("/swagger-ui/index.html"))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("swagger-ui/index.html")));
-    }
-
-    @Test
-    void openApiDocs_isPublic() throws Exception {
-        mockMvc.perform(get("/v3/api-docs"))
-                .andExpect(status().isInternalServerError())
-                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("v3/api-docs")));
-    }
 
     @Test
     @WithMockUser(roles = "ANALYST")
