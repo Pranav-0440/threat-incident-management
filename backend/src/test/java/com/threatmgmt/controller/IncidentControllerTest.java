@@ -51,6 +51,7 @@ class IncidentControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+
     @Test
     @WithMockUser(roles = "ANALYST")
     void createIncident_returnsCreated() throws Exception {
