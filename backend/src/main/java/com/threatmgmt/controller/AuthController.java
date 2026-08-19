@@ -16,6 +16,8 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
@@ -29,12 +31,13 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         User user = userService.registerUser(request);
-        String token = jwtUtil.generateToken(user.getUsername(), user.getRoles());
+        List<String> effectiveRoles = jwtUtil.normalizeRoles(user.getRoles());
+        String token = jwtUtil.generateToken(user.getUsername(), effectiveRoles);
 
         AuthResponse response = AuthResponse.builder()
                 .token(token)
                 .username(user.getUsername())
-                .roles(user.getRoles())
+                .roles(effectiveRoles)
                 .build();
 
         return ResponseEntity.status(201).body(response);
@@ -60,12 +63,13 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(
                         user.getUsername(), request.getPassword()));
 
-        String token = jwtUtil.generateToken(user.getUsername(), user.getRoles());
+        List<String> effectiveRoles = jwtUtil.normalizeRoles(user.getRoles());
+        String token = jwtUtil.generateToken(user.getUsername(), effectiveRoles);
 
         AuthResponse response = AuthResponse.builder()
                 .token(token)
                 .username(user.getUsername())
-                .roles(user.getRoles())
+                .roles(effectiveRoles)
                 .build();
 
         return ResponseEntity.ok(response);
