@@ -42,29 +42,23 @@ public class AttachmentController {
     @GetMapping("/files/{fileName}")
     public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
         try {
-            Attachment attachment = attachmentService.getAttachmentsForIncident("")
-                    .stream()
-                    .filter(a -> a.getFileName().equals(fileName))
-                    .findFirst()
-                    .orElse(null);
-
-            Path filePath;
-            if (attachment != null) {
-                filePath = Paths.get(attachment.getStoragePath());
-            } else {
-                filePath = Paths.get("uploads").resolve(fileName).toAbsolutePath();
-            }
-
+            Attachment attachment = attachmentService.getAttachmentByFileName(fileName);
+            Path filePath = Paths.get(attachment.getStoragePath()).toAbsolutePath().normalize();
             Resource resource = new UrlResource(filePath.toUri());
-            if (resource.exists() || resource.isReadable()) {
-                String contentType = attachment != null ? attachment.getFileType() : "application/octet-stream";
-                return ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(contentType))
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + (attachment != null ? attachment.getOriginalName() : fileName) + "\"")
-                        .body(resource);
-            } else {
+            if (!resource.exists() || !resource.isReadable()) {
                 return ResponseEntity.notFound().build();
             }
+
+            String contentType = attachment.getFileType() != null
+                    ? attachment.getFileType()
+                    : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "inline; filename=\"" + attachment.getOriginalName() + "\"")
+                    .body(resource);
+        } catch (com.threatmgmt.exception.ResourceNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }

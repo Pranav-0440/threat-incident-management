@@ -75,6 +75,11 @@ public class AttachmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Attachment", "id", id));
     }
 
+    public Attachment getAttachmentByFileName(String fileName) {
+        return attachmentRepository.findByFileName(fileName)
+                .orElseThrow(() -> new ResourceNotFoundException("Attachment", "fileName", fileName));
+    }
+
     public void deleteAttachment(String id) {
         Attachment attachment = getAttachmentById(id);
         try {
