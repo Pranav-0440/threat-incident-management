@@ -12,6 +12,7 @@ import ReportsPage from './pages/ReportsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SettingsPage from './pages/SettingsPage';
 import AiCopilotWidget from './components/AiCopilotWidget';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -37,6 +38,8 @@ function ProtectedRoute({ children }) {
 }
 
 function AppLayout({ children }) {
+  useKeyboardShortcuts();
+
   return (
     <div className="app-layout">
       <Navbar />
