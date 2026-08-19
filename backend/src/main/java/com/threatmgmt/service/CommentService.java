@@ -36,9 +36,12 @@ public class CommentService {
         return commentRepository.findByIncidentIdOrderByCreatedAtAsc(incidentId);
     }
 
-    public void deleteComment(String commentId, String requestingUser) {
+    public void deleteComment(String commentId, String requestingUser, boolean privileged) {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
+        if (!privileged && !requestingUser.equals(comment.getAuthorUsername())) {
+            throw new org.springframework.security.access.AccessDeniedException("Only the comment author or an administrator can delete comments");
+        }
         commentRepository.delete(comment);
     }
 }
