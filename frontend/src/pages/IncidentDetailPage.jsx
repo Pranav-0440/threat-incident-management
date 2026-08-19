@@ -670,7 +670,7 @@ export default function IncidentDetailPage() {
                         {(att.fileSize / 1024).toFixed(1)} KB • {att.uploadedBy}
                       </div>
                       <a
-                        href={`http://localhost:8080${att.fileUrl}`}
+                        href={attachmentsAPI.getFileUrl(att.fileUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="btn btn-secondary btn-sm"
