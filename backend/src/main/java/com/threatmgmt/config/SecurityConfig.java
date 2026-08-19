@@ -50,6 +50,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/incidents/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/incidents/**")
                             .hasAnyRole("ANALYST", "ADMIN", "SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/incidents/*/status")
+                            .hasAnyRole("ANALYST", "ADMIN", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/incidents/**")
                             .hasAnyRole("ADMIN", "SUPER_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/incidents/**")

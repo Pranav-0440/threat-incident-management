@@ -137,6 +137,8 @@ class IncidentControllerTest {
                 .status("INVESTIGATING")
                 .build();
 
+        when(incidentPermissionEvaluator.hasPermission(any(), any(), anyString(), eq("status_update")))
+                .thenReturn(true);
         when(incidentService.updateStatus(eq("test-id-1"), eq("INVESTIGATING"), any())).thenReturn(incident);
 
         mockMvc.perform(patch("/api/v1/incidents/test-id-1/status")
@@ -146,8 +148,33 @@ class IncidentControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ANALYST")
-    void updateStatus_asAnalyst_forbidden() throws Exception {
+    @WithMockUser(username = "analystA", roles = "ANALYST")
+    void updateStatus_asAssignedAnalyst_succeeds() throws Exception {
+        Incident incident = Incident.builder()
+                .id("test-id-1")
+                .title("Test")
+                .description("Test")
+                .status("RESOLVED")
+                .assignedTo("analystA")
+                .build();
+
+        when(incidentPermissionEvaluator.hasPermission(any(), eq("test-id-1"), eq("incident"), eq("status_update")))
+                .thenReturn(true);
+        when(incidentService.updateStatus(eq("test-id-1"), eq("RESOLVED"), eq("analystA")))
+                .thenReturn(incident);
+
+        mockMvc.perform(patch("/api/v1/incidents/test-id-1/status")
+                        .param("status", "RESOLVED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("RESOLVED"));
+    }
+
+    @Test
+    @WithMockUser(username = "analystB", roles = "ANALYST")
+    void updateStatus_asUnrelatedAnalyst_forbidden() throws Exception {
+        when(incidentPermissionEvaluator.hasPermission(any(), eq("test-id-1"), eq("incident"), eq("status_update")))
+                .thenReturn(false);
+
         mockMvc.perform(patch("/api/v1/incidents/test-id-1/status")
                         .param("status", "RESOLVED"))
                 .andExpect(status().isForbidden());
