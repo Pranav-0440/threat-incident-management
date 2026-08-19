@@ -105,7 +105,7 @@ public class IncidentController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("(hasRole('ANALYST') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')) and hasPermission(#id, 'incident', 'status_update')")
     public ResponseEntity<Incident> updateStatus(
             @PathVariable String id,
             @RequestParam String status,
