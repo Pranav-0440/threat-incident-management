@@ -39,7 +39,10 @@ public class CommentController {
             @PathVariable String incidentId,
             @PathVariable String commentId,
             Authentication authentication) {
-        commentService.deleteComment(commentId, authentication.getName());
+        boolean privileged = authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
+                        || authority.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        commentService.deleteComment(commentId, authentication.getName(), privileged);
         return ResponseEntity.noContent().build();
     }
 }
