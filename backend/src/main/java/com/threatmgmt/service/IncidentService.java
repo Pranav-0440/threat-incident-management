@@ -11,7 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -82,21 +84,47 @@ public class IncidentService {
                 .toList();
     }
 
-    public java.util.Map<String, Object> getStats() {
-        List<Incident> all = incidentRepo.findAll();
-        long total = all.size();
-        long open = all.stream().filter(i -> "OPEN".equals(i.getStatus())).count();
-        long investigating = all.stream().filter(i -> "INVESTIGATING".equals(i.getStatus())).count();
-        long resolved = all.stream().filter(i -> "RESOLVED".equals(i.getStatus()) || "CLOSED".equals(i.getStatus())).count();
-        long critical = all.stream().filter(i -> "CRITICAL".equals(i.getSeverity())).count();
+    public Map<String, Object> getStats(String username, boolean privileged) {
+        List<Incident> incidents = privileged
+                ? incidentRepo.findAll()
+                : incidentRepo.findByAssignedToOrReportedBy(username, username);
 
-        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        long total = incidents.size();
+        long open = countByStatus(incidents, "OPEN");
+        long investigating = countByStatus(incidents, "INVESTIGATING");
+        long waitingEvidence = countByStatus(incidents, "WAITING_EVIDENCE");
+        long resolved = countByStatus(incidents, "RESOLVED");
+        long closed = countByStatus(incidents, "CLOSED");
+        long critical = countBySeverity(incidents, "CRITICAL");
+        long high = countBySeverity(incidents, "HIGH");
+        long medium = countBySeverity(incidents, "MEDIUM");
+        long low = countBySeverity(incidents, "LOW");
+        double averageRiskScore = incidents.stream()
+                .mapToInt(Incident::getRiskScore)
+                .average()
+                .orElse(0.0);
+
+        Map<String, Object> stats = new HashMap<>();
         stats.put("total", total);
         stats.put("open", open);
         stats.put("investigating", investigating);
+        stats.put("waiting_evidence", waitingEvidence);
         stats.put("resolved", resolved);
+        stats.put("closed", closed);
         stats.put("critical", critical);
+        stats.put("high", high);
+        stats.put("medium", medium);
+        stats.put("low", low);
+        stats.put("averageRiskScore", averageRiskScore);
         return stats;
+    }
+
+    private long countByStatus(List<Incident> incidents, String status) {
+        return incidents.stream().filter(i -> status.equals(i.getStatus())).count();
+    }
+
+    private long countBySeverity(List<Incident> incidents, String severity) {
+        return incidents.stream().filter(i -> severity.equals(i.getSeverity())).count();
     }
 
     public Incident assignAnalyst(String id, String analystUsername, String analystName, String updatedBy) {

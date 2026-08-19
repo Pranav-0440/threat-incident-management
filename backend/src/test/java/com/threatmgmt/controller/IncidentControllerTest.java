@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -126,6 +127,30 @@ class IncidentControllerTest {
         mockMvc.perform(get("/api/v1/incidents/search").param("q", "suspicious"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "analystA", roles = "ANALYST")
+    void getStats_asAnalyst_usesScopedServiceCall() throws Exception {
+        when(incidentService.getStats("analystA", false))
+                .thenReturn(Map.of("total", 2L, "open", 1L));
+
+        mockMvc.perform(get("/api/v1/incidents/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.open").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    void getStats_asAdmin_usesPrivilegedServiceCall() throws Exception {
+        when(incidentService.getStats("admin", true))
+                .thenReturn(Map.of("total", 10L, "critical", 3L));
+
+        mockMvc.perform(get("/api/v1/incidents/stats"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(10))
+                .andExpect(jsonPath("$.critical").value(3));
     }
 
     @Test

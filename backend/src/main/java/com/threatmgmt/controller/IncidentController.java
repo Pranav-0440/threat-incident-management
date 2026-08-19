@@ -60,8 +60,11 @@ public class IncidentController {
     }
 
     @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats() {
-        return ResponseEntity.ok(incidentService.getStats());
+    public ResponseEntity<Map<String, Object>> getStats(Authentication authentication) {
+        boolean privileged = authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
+                        || authority.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        return ResponseEntity.ok(incidentService.getStats(authentication.getName(), privileged));
     }
 
     @PutMapping("/{id}")
