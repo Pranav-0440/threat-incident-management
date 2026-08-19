@@ -50,7 +50,7 @@ export function AuthProvider({ children }) {
   };
 
   const isAdmin = () => {
-    return user?.roles?.some(r => r === 'ROLE_ADMIN');
+    return user?.roles?.some(r => r === 'ROLE_ADMIN' || r === 'ROLE_SUPER_ADMIN');
   };
 
   const isAnalyst = () => {
