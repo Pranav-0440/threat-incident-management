@@ -26,6 +26,8 @@ export default function IncidentsPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [presetFilter, setPresetFilter] = useState('NONE');
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
 
   const navigate = useNavigate();
 
@@ -48,20 +50,14 @@ export default function IncidentsPage() {
   }, []);
 
   const handleApplyPreset = (presetName) => {
-    setSeverityFilter('ALL');
-    setPriorityFilter('ALL');
-    setStatusFilter('ALL');
-    setCategoryFilter('ALL');
-    setSearchQuery('');
-
     if (presetName === 'P1_CRITICAL') {
       setPriorityFilter('P1');
     } else if (presetName === 'ASSIGNED_ME') {
       setWorkspaceTab('ASSIGNED_TO_ME');
     } else if (presetName === 'HIGH_RISK') {
-      setSearchQuery('risk:high');
+      setPresetFilter('HIGH_RISK');
     } else if (presetName === 'TODAY') {
-      setSearchQuery('today');
+      setPresetFilter('TODAY');
     }
   };
 
@@ -81,22 +77,24 @@ export default function IncidentsPage() {
     const matchesStatus = statusFilter === 'ALL' || i.status === statusFilter;
     const matchesCategory = categoryFilter === 'ALL' || i.category === categoryFilter;
 
-    // 3. Search Query
+    // 3. Saved preset predicate
+    const matchesPreset = presetFilter === 'NONE'
+      || (presetFilter === 'HIGH_RISK' && i.riskScore >= 70)
+      || (presetFilter === 'TODAY' && i.createdAt && new Date(i.createdAt).toISOString().slice(0, 10) === today);
+
+    // 4. Search Query
     let matchesSearch = true;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
 
       if (q === 'risk:high') {
-        return i.riskScore >= 70;
-      }
-
-      if (q === 'today') {
-        const todayStr = new Date().toISOString().slice(0, 10);
+        matchesSearch = i.riskScore >= 70;
+      } else if (q === 'today') {
         const incDateStr = i.createdAt ? new Date(i.createdAt).toISOString().slice(0, 10) : '';
-        return incDateStr === todayStr;
+        matchesSearch = incDateStr === today;
       }
 
-      if (q.includes(':')) {
+      else if (q.includes(':')) {
         const parts = q.split(' ');
         matchesSearch = parts.every(part => {
           if (part.startsWith('severity:')) {
@@ -136,7 +134,7 @@ export default function IncidentsPage() {
       }
     }
 
-    return matchesSeverity && matchesPriority && matchesStatus && matchesCategory && matchesSearch;
+    return matchesSeverity && matchesPriority && matchesStatus && matchesCategory && matchesPreset && matchesSearch;
   });
 
   const handleSearch = useCallback((query) => {
