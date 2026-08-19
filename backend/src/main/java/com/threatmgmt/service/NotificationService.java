@@ -1,5 +1,6 @@
 package com.threatmgmt.service;
 
+import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Notification;
 import com.threatmgmt.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
@@ -39,11 +40,14 @@ public class NotificationService {
         return notificationRepository.countByRecipientUsernameAndReadFalse(username);
     }
 
-    public void markAsRead(String notificationId) {
-        notificationRepository.findById(notificationId).ifPresent(n -> {
-            n.setRead(true);
-            notificationRepository.save(n);
-        });
+    public void markAsRead(String notificationId, String requestingUsername) {
+        Notification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Notification", "id", notificationId));
+        if (!requestingUsername.equals(notification.getRecipientUsername())) {
+            throw new org.springframework.security.access.AccessDeniedException("Notification does not belong to the authenticated user");
+        }
+        notification.setRead(true);
+        notificationRepository.save(notification);
     }
 
     public void markAllAsRead(String username) {
