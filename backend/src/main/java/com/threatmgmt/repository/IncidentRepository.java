@@ -17,6 +17,8 @@ public interface IncidentRepository extends JpaRepository<Incident, String> {
 
     List<Incident> findByReportedBy(String userId);
 
+    List<Incident> findByAssignedToOrReportedBy(String assignedTo, String reportedBy);
+
     List<Incident> findByCategory(String category);
 
     long countByStatus(String status);

@@ -10,6 +10,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -125,6 +126,80 @@ class IncidentServiceTest {
 
         assertEquals("INVESTIGATING", result.getStatus());
         assertNotNull(result.getUpdatedAt());
+    }
+
+    @Test
+    void getStats_forAnalyst_scopesToAssignedOrReportedIncidents() {
+        Incident assigned = Incident.builder()
+                .status("OPEN")
+                .severity("HIGH")
+                .riskScore(60)
+                .assignedTo("analystA")
+                .build();
+        Incident reported = Incident.builder()
+                .status("RESOLVED")
+                .severity("LOW")
+                .riskScore(20)
+                .reportedBy("analystA")
+                .build();
+
+        when(incidentRepo.findByAssignedToOrReportedBy("analystA", "analystA"))
+                .thenReturn(List.of(assigned, reported));
+
+        Map<String, Object> stats = incidentService.getStats("analystA", false);
+
+        assertEquals(2L, stats.get("total"));
+        assertEquals(1L, stats.get("open"));
+        assertEquals(1L, stats.get("resolved"));
+        assertEquals(1L, stats.get("high"));
+        assertEquals(1L, stats.get("low"));
+        assertEquals(40.0, stats.get("averageRiskScore"));
+        verify(incidentRepo).findByAssignedToOrReportedBy("analystA", "analystA");
+        verify(incidentRepo, never()).findAll();
+    }
+
+    @Test
+    void getStats_forPrivilegedUser_usesGlobalIncidentsAndIncludesAllMetrics() {
+        Incident openCritical = Incident.builder()
+                .status("OPEN")
+                .severity("CRITICAL")
+                .riskScore(80)
+                .build();
+        Incident waitingClosed = Incident.builder()
+                .status("WAITING_EVIDENCE")
+                .severity("MEDIUM")
+                .riskScore(35)
+                .build();
+        Incident closedLow = Incident.builder()
+                .status("CLOSED")
+                .severity("LOW")
+                .riskScore(10)
+                .build();
+        when(incidentRepo.findAll()).thenReturn(List.of(openCritical, waitingClosed, closedLow));
+
+        Map<String, Object> stats = incidentService.getStats("admin", true);
+
+        assertEquals(3L, stats.get("total"));
+        assertEquals(1L, stats.get("open"));
+        assertEquals(1L, stats.get("waiting_evidence"));
+        assertEquals(1L, stats.get("closed"));
+        assertEquals(1L, stats.get("critical"));
+        assertEquals(1L, stats.get("medium"));
+        assertEquals(1L, stats.get("low"));
+        assertEquals(125.0 / 3.0, (Double) stats.get("averageRiskScore"), 0.0001);
+        verify(incidentRepo).findAll();
+        verify(incidentRepo, never()).findByAssignedToOrReportedBy(any(), any());
+    }
+
+    @Test
+    void getStats_forEmptyScope_returnsZeroAverage() {
+        when(incidentRepo.findByAssignedToOrReportedBy("analystA", "analystA"))
+                .thenReturn(List.of());
+
+        Map<String, Object> stats = incidentService.getStats("analystA", false);
+
+        assertEquals(0L, stats.get("total"));
+        assertEquals(0.0, stats.get("averageRiskScore"));
     }
 
     @Test
