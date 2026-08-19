@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function Navbar() {
-  const { user, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin, isSuperAdmin } = useAuth();
   const location = useLocation();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -193,7 +193,7 @@ export default function Navbar() {
         <div className="sidebar-user-info">
           <div className="sidebar-user-name">{user?.username}</div>
           <div className="sidebar-user-role">
-            {isAdmin() ? 'Administrator' : 'SOC Analyst'}
+            {isSuperAdmin?.() ? 'Super Administrator' : (isAdmin() ? 'Administrator' : 'SOC Analyst')}
           </div>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={logout} title="Logout" style={{ padding: '6px' }}>

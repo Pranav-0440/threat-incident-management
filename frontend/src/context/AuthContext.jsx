@@ -62,6 +62,10 @@ export function AuthProvider({ children }) {
     );
   };
 
+  const isSuperAdmin = () => {
+    return Boolean(user?.roles?.includes("ROLE_SUPER_ADMIN"));
+  };
+
   const isAnalyst = () => {
     return Boolean(user?.roles?.includes("ROLE_ANALYST"));
   };
@@ -78,6 +82,7 @@ export function AuthProvider({ children }) {
     register,
     logout,
     isAdmin,
+    isSuperAdmin,
     isAnalyst,
     isAuthenticated,
   };
