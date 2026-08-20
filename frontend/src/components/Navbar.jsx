@@ -48,6 +48,12 @@ export default function Navbar() {
     };
   }, [user]);
 
+  useEffect(() => {
+    const handleClose = () => setShowNotifications(false);
+    window.addEventListener('app:close-drawers', handleClose);
+    return () => window.removeEventListener('app:close-drawers', handleClose);
+  }, []);
+
   const handleMarkAllRead = async () => {
     try {
       await notificationsAPI.markAllAsRead();

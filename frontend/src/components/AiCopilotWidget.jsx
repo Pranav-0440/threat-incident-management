@@ -35,6 +35,12 @@ export default function AiCopilotWidget() {
     }
   }, [messages, isOpen]);
 
+  useEffect(() => {
+    const handleClose = () => setIsOpen(false);
+    window.addEventListener('app:close-drawers', handleClose);
+    return () => window.removeEventListener('app:close-drawers', handleClose);
+  }, []);
+
   const handleSend = async (queryText) => {
     const text = queryText || input;
     if (!text.trim() || loading) return;
