@@ -29,6 +29,17 @@ spring:
     multipart:
       max-file-size: 8MB
       max-request-size: 8MB
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:true}
+          starttls:
+            enable: ${SMTP_STARTTLS:true}
 
 server:
   port: ${PORT:8080}
@@ -40,6 +51,10 @@ jwt:
 app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}
+  password-reset:
+    mail-enabled: ${APP_PASSWORD_RESET_MAIL_ENABLED:false}
+    frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:5173}
+    mail-from: ${APP_PASSWORD_RESET_MAIL_FROM:no-reply@threatguard.local}
 
 logging:
   level:

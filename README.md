@@ -116,6 +116,12 @@ $$\text{Risk Score} = \text{Severity Weight} + \text{Category Weight}$$
 | :--- | :--- | :--- | :--- |
 | `POST` | `/api/v1/auth/register` | Public | Registers a new user with selected role (`ANALYST` or `ADMIN`) |
 | `POST` | `/api/v1/auth/login` | Public | Authenticates credentials against database and returns JWT token |
+| `POST` | `/api/v1/auth/forgot-password` | Public | Requests a reset link using a username or email without revealing account existence |
+| `POST` | `/api/v1/auth/reset-password` | Public | Applies a valid, unexpired, single-use reset token to a new BCrypt password |
+
+### Password recovery configuration
+
+Password reset delivery is disabled by default. To enable SMTP delivery, set `APP_PASSWORD_RESET_MAIL_ENABLED=true`, configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and set `APP_PASSWORD_RESET_MAIL_FROM` and `APP_FRONTEND_BASE_URL` for the deployment. Reset tokens are generated with a cryptographically secure random source, stored only as SHA-256 hashes, expire after 15 minutes, and are marked used after a successful reset. The forgot-password response is intentionally generic to reduce account enumeration.
 
 ### Incidents (`/api/v1/incidents`)
 | Method | Endpoint | Access | Description |

@@ -45,7 +45,8 @@ client.interceptors.response.use(
       localStorage.removeItem('user');
       if (typeof window !== 'undefined' &&
         !window.location.pathname.startsWith('/login') &&
-        !window.location.pathname.startsWith('/register')) {
+        !window.location.pathname.startsWith('/register') &&
+        !window.location.pathname.startsWith('/reset-password')) {
         window.location.href = '/login';
       }
       return Promise.reject(error);
@@ -70,6 +71,8 @@ client.interceptors.response.use(
 export const authAPI = {
   login: (credentials) => client.post('/auth/login', credentials),
   register: (data) => client.post('/auth/register', data),
+  forgotPassword: (identifier) => client.post('/auth/forgot-password', { identifier }),
+  resetPassword: (token, newPassword) => client.post('/auth/reset-password', { token, newPassword }),
 };
 
 // ========== Incidents API ==========
