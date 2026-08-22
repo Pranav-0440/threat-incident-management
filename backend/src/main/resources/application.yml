@@ -18,6 +18,7 @@ spring:
       idle-timeout: 30000
       max-lifetime: 60000
       connection-timeout: 20000
+      connection-test-query: SELECT 1
   jpa:
     hibernate:
       ddl-auto: update
