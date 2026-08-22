@@ -1,17 +1,10 @@
 import axios from 'axios';
 
-const getApiBaseUrl = () => {
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-  // If running in production browser environment (e.g. Vercel)
-  if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'https://threat-incident-management-gj99.onrender.com/api/v1';
-  }
-  return 'http://localhost:8080/api/v1';
-};
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const API_BASE_URL = getApiBaseUrl();
+if (!API_BASE_URL) {
+  throw new Error('VITE_API_BASE_URL must be configured for the active Vite mode');
+}
 
 const client = axios.create({
   baseURL: API_BASE_URL,
