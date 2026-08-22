@@ -8,6 +8,9 @@ import com.threatmgmt.repository.IncidentSearchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -52,6 +55,55 @@ public class IncidentService {
 
     public List<Incident> getAll() {
         return incidentRepo.findAll();
+    }
+
+    public Page<Incident> getPage(String username,
+                                  boolean privileged,
+                                  int page,
+                                  int size,
+                                  String query,
+                                  String severity,
+                                  String status,
+                                  String category,
+                                  String priority,
+                                  String sortBy,
+                                  String direction) {
+        int boundedPage = Math.max(page, 0);
+        int boundedSize = Math.min(Math.max(size, 1), 100);
+        String sortProperty = switch (sortBy == null ? "" : sortBy.trim()) {
+            case "updatedAt" -> "updatedAt";
+            case "severity" -> "severity";
+            case "priority" -> "priority";
+            case "status" -> "status";
+            case "title" -> "title";
+            default -> "createdAt";
+        };
+        Sort.Direction sortDirection = "asc".equalsIgnoreCase(direction)
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+        Sort sort = Sort.by(sortDirection, sortProperty).and(Sort.by(sortDirection, "id"));
+
+        return incidentRepo.findPage(
+                username,
+                privileged,
+                normalizeTextFilter(query),
+                normalizeUpperFilter(severity),
+                normalizeUpperFilter(status),
+                normalizeUpperFilter(category),
+                normalizeUpperFilter(priority),
+                PageRequest.of(boundedPage, boundedSize, sort));
+    }
+
+    private String normalizeTextFilter(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private String normalizeUpperFilter(String value) {
+        String normalized = normalizeTextFilter(value);
+        return normalized == null ? null : normalized.toUpperCase(java.util.Locale.ROOT);
     }
 
     public Incident findById(String id) {

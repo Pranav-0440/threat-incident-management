@@ -75,6 +75,7 @@ export const authAPI = {
 // ========== Incidents API ==========
 export const incidentsAPI = {
   getAll: () => client.get('/incidents'),
+  getPage: (params = {}) => client.get('/incidents/page', { params }),
   getById: (id) => client.get(`/incidents/${id}`),
   create: (incident) => client.post('/incidents', incident),
   update: (id, incident) => client.put(`/incidents/${id}`, incident),

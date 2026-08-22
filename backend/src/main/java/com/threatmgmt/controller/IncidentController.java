@@ -1,10 +1,12 @@
 package com.threatmgmt.controller;
 
+import com.threatmgmt.dto.IncidentPageResponse;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.service.IncidentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -34,6 +36,28 @@ public class IncidentController {
         return ResponseEntity.ok(incidentService.getAll());
     }
 
+    @GetMapping("/page")
+    public ResponseEntity<IncidentPageResponse> getPage(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String severity,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String priority,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction,
+            Authentication authentication) {
+        boolean privileged = isPrivileged(authentication);
+        Page<Incident> incidents = incidentService.getPage(
+                authentication.getName(), privileged, page, size, q, severity, status,
+                category, priority, sortBy, direction);
+        return ResponseEntity.ok(new IncidentPageResponse(
+                incidents.getContent(), incidents.getNumber(), incidents.getSize(),
+                incidents.getTotalElements(), incidents.getTotalPages(), incidents.isFirst(),
+                incidents.isLast(), incidents.getSort().toString()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Incident> getById(@PathVariable String id) {
         return ResponseEntity.ok(incidentService.findById(id));
@@ -59,11 +83,15 @@ public class IncidentController {
         return ResponseEntity.ok(incidentService.findByStatus(status.toUpperCase()));
     }
 
-    @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats(Authentication authentication) {
-        boolean privileged = authentication.getAuthorities().stream()
+    private boolean isPrivileged(Authentication authentication) {
+        return authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
                         || authority.getAuthority().equals("ROLE_SUPER_ADMIN"));
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getStats(Authentication authentication) {
+        boolean privileged = isPrivileged(authentication);
         return ResponseEntity.ok(incidentService.getStats(authentication.getName(), privileged));
     }
 
