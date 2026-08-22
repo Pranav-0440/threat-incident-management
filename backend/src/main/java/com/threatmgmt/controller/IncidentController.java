@@ -32,8 +32,8 @@ public class IncidentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Incident>> getAll() {
-        return ResponseEntity.ok(incidentService.getAll());
+    public ResponseEntity<List<Incident>> getAll(Authentication authentication) {
+        return ResponseEntity.ok(incidentService.getAll(authentication.getName(), isPrivileged(authentication)));
     }
 
     @GetMapping("/page")
@@ -59,40 +59,39 @@ public class IncidentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Incident> getById(@PathVariable String id) {
-        return ResponseEntity.ok(incidentService.findById(id));
+    public ResponseEntity<Incident> getById(@PathVariable String id, Authentication authentication) {
+        return ResponseEntity.ok(incidentService.findById(id, authentication.getName(), isPrivileged(authentication)));
     }
 
     @GetMapping("/{id}/related")
-    public ResponseEntity<List<Incident>> getRelated(@PathVariable String id) {
-        return ResponseEntity.ok(incidentService.getRelatedIncidents(id));
+    public ResponseEntity<List<Incident>> getRelated(@PathVariable String id, Authentication authentication) {
+        return ResponseEntity.ok(incidentService.getRelatedIncidents(id, authentication.getName(), isPrivileged(authentication)));
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<IncidentSearchDoc>> search(@RequestParam String q) {
-        return ResponseEntity.ok(incidentService.searchIncidents(q));
+    public ResponseEntity<List<IncidentSearchDoc>> search(@RequestParam String q, Authentication authentication) {
+        return ResponseEntity.ok(incidentService.searchIncidents(q, authentication.getName(), isPrivileged(authentication)));
     }
 
     @GetMapping("/severity/{severity}")
-    public ResponseEntity<List<Incident>> getBySeverity(@PathVariable String severity) {
-        return ResponseEntity.ok(incidentService.findBySeverity(severity.toUpperCase()));
+    public ResponseEntity<List<Incident>> getBySeverity(@PathVariable String severity, Authentication authentication) {
+        return ResponseEntity.ok(incidentService.findBySeverity(severity.toUpperCase(), authentication.getName(), isPrivileged(authentication)));
     }
 
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<Incident>> getByStatus(@PathVariable String status) {
-        return ResponseEntity.ok(incidentService.findByStatus(status.toUpperCase()));
+    public ResponseEntity<List<Incident>> getByStatus(@PathVariable String status, Authentication authentication) {
+        return ResponseEntity.ok(incidentService.findByStatus(status.toUpperCase(), authentication.getName(), isPrivileged(authentication)));
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getStats(Authentication authentication) {
+        return ResponseEntity.ok(incidentService.getStats(authentication.getName(), isPrivileged(authentication)));
     }
 
     private boolean isPrivileged(Authentication authentication) {
         return authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
                         || authority.getAuthority().equals("ROLE_SUPER_ADMIN"));
-    }
-
-    @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats(Authentication authentication) {
-        boolean privileged = isPrivileged(authentication);
-        return ResponseEntity.ok(incidentService.getStats(authentication.getName(), privileged));
     }
 
     @PutMapping("/{id}")
