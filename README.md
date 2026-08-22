@@ -179,6 +179,30 @@ SPRING_DATASOURCE_PASSWORD=postgrespassword
 
 ---
 
+### Database Migrations
+
+The backend uses **Flyway** to apply versioned PostgreSQL migrations from `backend/src/main/resources/db/migration`. Hibernate is configured with `ddl-auto: validate`, so application startup verifies the schema but never alters production tables implicitly. The baseline migration `V1__baseline_schema.sql` creates the current ThreatGuard schema for a new database and adds indexes used by incident and related-resource lookups.
+
+For a fresh local database, configure `backend/.env` and start the backend normally. Flyway creates the schema and records its version in `flyway_schema_history` before Hibernate validates the mapped entities:
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+For an existing database created by Hibernate or an earlier deployment, keep `spring.flyway.baseline-on-migrate=true` and `spring.flyway.baseline-version=0`. Flyway records the existing schema as the starting point and then applies versioned migrations; the baseline uses idempotent `CREATE ... IF NOT EXISTS` statements so it can safely add any missing baseline objects. Review future migration SQL in staging before production and never edit an already-applied migration; add the next version instead, such as `V2__add_incident_index.sql`.
+
+Automated tests that do not connect to PostgreSQL can use the `test` profile, which disables Flyway and schema validation:
+
+```bash
+cd backend
+mvn test -Dspring.profiles.active=test --batch-mode
+```
+
+Production deployments should run the same application artifact against the target database, allow Flyway to complete before serving traffic, and fail startup if migration or schema validation fails. Do not restore `ddl-auto: update` in production.
+
+---
+
 ### 🚀 Running the Application
 
 1. **Start Backend Service (Spring Boot)**
