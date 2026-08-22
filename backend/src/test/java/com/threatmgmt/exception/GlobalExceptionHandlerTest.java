@@ -14,6 +14,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class GlobalExceptionHandlerTest {
 
     @Test
+    void rateLimitExceptionReturnsStructuredRetryResponse() {
+        GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+        ResponseEntity<Map<String, Object>> response = handler.handleRateLimitExceeded(
+                new RateLimitExceededException(37));
+
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.getStatusCode());
+        Map<String, Object> body = response.getBody();
+        assertNotNull(body);
+        assertEquals(429, body.get("status"));
+        assertEquals("TOO_MANY_REQUESTS", body.get("error"));
+        assertEquals(37L, body.get("retryAfterSeconds"));
+        assertEquals("Rate limit exceeded. Please wait 37 seconds before retrying.", body.get("message"));
+    }
+
+    @Test
     void genericExceptionReturnsSafeMessageAndCorrelationId() {
         GlobalExceptionHandler handler = new GlobalExceptionHandler();
         String internalDetails = "database password=super-secret";

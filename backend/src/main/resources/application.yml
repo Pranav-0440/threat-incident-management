@@ -40,6 +40,10 @@ jwt:
 app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:*}
+  rate-limit:
+    login:
+      max-attempts: ${APP_LOGIN_RATE_LIMIT_MAX_ATTEMPTS:5}
+      window-seconds: ${APP_LOGIN_RATE_LIMIT_WINDOW_SECONDS:60}
 
 logging:
   level:
