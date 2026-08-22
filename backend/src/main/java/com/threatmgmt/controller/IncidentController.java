@@ -1,5 +1,6 @@
 package com.threatmgmt.controller;
 
+import com.threatmgmt.dto.AnalyticsStatsResponse;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.service.IncidentService;
@@ -59,11 +60,21 @@ public class IncidentController {
         return ResponseEntity.ok(incidentService.findByStatus(status.toUpperCase()));
     }
 
-    @GetMapping("/stats")
-    public ResponseEntity<Map<String, Object>> getStats(Authentication authentication) {
-        boolean privileged = authentication.getAuthorities().stream()
+    @GetMapping("/analytics")
+    public ResponseEntity<AnalyticsStatsResponse> getAnalytics(Authentication authentication) {
+        boolean privileged = isPrivileged(authentication);
+        return ResponseEntity.ok(incidentService.getAnalytics(authentication.getName(), privileged));
+    }
+
+    private boolean isPrivileged(Authentication authentication) {
+        return authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
                         || authority.getAuthority().equals("ROLE_SUPER_ADMIN"));
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<Map<String, Object>> getStats(Authentication authentication) {
+        boolean privileged = isPrivileged(authentication);
         return ResponseEntity.ok(incidentService.getStats(authentication.getName(), privileged));
     }
 
