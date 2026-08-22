@@ -25,14 +25,10 @@ export default function DashboardPage() {
       try {
         const [statsRes, incidentsRes] = await Promise.all([
           incidentsAPI.getStats(),
-          incidentsAPI.getAll(),
+          incidentsAPI.getPage({ page: 0, size: 5, sortBy: 'createdAt', direction: 'desc' }),
         ]);
         setStats(statsRes.data);
-        // Sort by createdAt descending and take top 5
-        const sorted = (incidentsRes.data || []).sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        setRecentIncidents(sorted.slice(0, 5));
+        setRecentIncidents(incidentsRes.data?.content || []);
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
       } finally {
