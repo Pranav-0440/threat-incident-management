@@ -8,6 +8,8 @@ import com.threatmgmt.repository.IncidentRepository;
 import com.threatmgmt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -28,7 +30,10 @@ public class UserService implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @Cacheable(value = "userDetails", key = "#usernameOrEmail")
     public UserDetails loadUserByUsername(String usernameOrEmail) throws UsernameNotFoundException {
+        log.debug("Cache MISS - Loading user from database: {}", usernameOrEmail);
+
         User user = userRepository.findByUsername(usernameOrEmail)
                 .or(() -> userRepository.findByEmail(usernameOrEmail))
                 .orElseThrow(() -> new UsernameNotFoundException(
@@ -54,6 +59,7 @@ public class UserService implements UserDetailsService {
         );
     }
 
+    @CacheEvict(value = "userDetails", allEntries = true)
     public User registerUser(RegisterRequest request) {
         if (userRepository.existsByUsername(request.getUsername())) {
             throw new IllegalArgumentException("Username already exists: " + request.getUsername());
@@ -99,6 +105,7 @@ public class UserService implements UserDetailsService {
         return userRepository.findAll();
     }
 
+    @CacheEvict(value = "userDetails", allEntries = true)
     public User updateUserRole(String userId, String role) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
