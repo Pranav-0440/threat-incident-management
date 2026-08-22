@@ -10,15 +10,17 @@
 [![Contributing](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg)](CONTRIBUTING.md)
 [![Code of Conduct](https://img.shields.io/badge/Code%20of%20Conduct-v2.1-orange.svg)](CODE_OF_CONDUCT.md)
 
-**ThreatGuard** is a full-stack Security Operations Center (SOC) reference application for reporting, investigating, triaging, collaborating on, and resolving physical and cybersecurity incidents in real-time.
+**ThreatGuard** is a full-stack Security Operations Center (SOC) reference application for reporting, investigating, triaging, collaborating on, and resolving physical and cybersecurity incidents.
 
-Built with a high-performance **Spring Boot 3.3** backend, **Redis (Upstash)** in-memory caching layer, **Supabase PostgreSQL** database, and a responsive **React 19** dashboard.
+Built with a **Spring Boot 3.3** backend, **Redis (Upstash)** in-memory cache layer, **Supabase PostgreSQL** (with an optional local PostgreSQL container), and a responsive **React 19** dashboard. The current AI-labelled experiences are deterministic client-side helpers; they do not call an external LLM service.
 
 ---
 
 ## 📸 Enterprise Platform Highlights
 
-<img width="1920" height="972" alt="ThreatGuard Platform Overview" src="https://github.com/user-attachments/assets/415c6acf-da2a-4c86-96ce-82f375a27fde" />
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/415c6acf-da2a-4c86-96ce-82f375a27fde" alt="ThreatGuard SOC Intelligence Dashboard" width="900" style="border-radius: 12px; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); max-width: 100%; height: auto;" />
+</p>
 
 ---
 
@@ -44,7 +46,7 @@ graph TD
     end
 ```
 
-PostgreSQL is the system of record, while Redis provides sub-millisecond in-memory caching for user lookups and frequently accessed incidents.
+PostgreSQL is the backend system of record. Evidence files use the local filesystem path configured by `file.upload-dir` (default `uploads`); production deployments therefore require persistent/shared storage or an explicitly configured storage provider.
 
 ---
 
@@ -65,35 +67,35 @@ ThreatGuard integrates **Spring Cache + Spring Data Redis (Lettuce)** to elimina
 ### 1. 🔒 Hardened Authentication & Role-Based Access Control (RBAC)
 - **Role Selection Cards**: Register as a **SOC Analyst** or **Administrator** directly on the sign-up page.
 - **First-User Bootstrap**: The first registered system account automatically receives `ROLE_SUPER_ADMIN`.
-- **Effective Role Hierarchy**: `ROLE_SUPER_ADMIN` grants administrative and analyst capabilities; standard registration accepts `ANALYST` or `ADMIN`.
+- **Effective Role Hierarchy**: A `ROLE_SUPER_ADMIN` account is treated as an administrator and analyst by the database-backed authority mapping; ordinary registration accepts only `ANALYST` or `ADMIN`.
 - **Login Identifier**: Authentication accepts either username or registered email address.
-- **Admin User Console (`/admin/users`)**: Dedicated admin control panel to view registered analyst accounts, modify roles, and monitor active workloads.
+- **Admin User Management Console (`/admin/users`)**: Dedicated admin control panel to view registered analyst accounts, manage roles (`ANALYST` / `ADMIN`), and review active assigned workloads.
 
 ### 2. 🕵️ Security Analyst Investigation Workspace
 - **Tabbed Workspace (`IncidentDetailPage.jsx`)**:
-  - **Overview**: Incident metadata, risk score gauge (0-100), executive summary, and 6-item interactive SOC checklist.
-  - **Timeline**: Chronological Jira-style history rendering audit-log records.
+  - **Overview**: High-level metadata, risk assessment score gauge (0-100), client-side executive summary preview, and 6-item interactive SOC investigation checklist.
+  - **Timeline**: Vertical Jira-style chronological history rendering audit-log records.
   - **Comments**: Threaded investigation discussion box.
-  - **Evidence Files**: Multi-media file manager supporting screenshots, logs, PDFs, and audio/video.
+  - **Evidence Files**: Multi-media file manager supporting screenshots, log files, PDFs, audio/video.
 - **Lifecycle Stepper**: Visual 5-step progress pipeline (`OPEN` → `INVESTIGATING` → `WAITING_EVIDENCE` → `RESOLVED` → `CLOSED`).
 
-### 3. 🤖 AI-Assisted Incident Helpers
-- **Floating Assistant (`AiCopilotWidget.jsx`)**: Authenticated helper that analyzes incidents and provides deterministic guidance for common triage queries.
-- **Smart Categorizer (`CreateIncidentPage.jsx`)**: Recommends category, severity, priority (`P1-P4`), and risk score based on incident description.
-- **Executive Summary Generator (`IncidentDetailPage.jsx`)**: Compiles structured briefing summaries for quick executive reporting.
+### 3. AI-Labelled Client Helpers
+- **Floating Assistant (`AiCopilotWidget.jsx`)**: An authenticated client-side helper that fetches incidents and applies deterministic keyword rules for common investigation prompts.
+- **Auto-Suggestion (`CreateIncidentPage.jsx`)**: A local keyword heuristic suggests severity, category, priority (`P1-P4`), and risk score; the user remains responsible for the submitted values.
+- **Executive Summary Preview (`IncidentDetailPage.jsx`)**: Generates a deterministic client-side summary from incident fields. There is no external LLM or backend AI endpoint in the current implementation.
 
 ### 4. 📊 Dashboard Analytics & Interactive Workspaces
-- **Clickable Dashboard KPI Cards**: Quick-filter by *Open Incidents*, *Critical Alerts*, or *Pending Triage*.
+- **Clickable Dashboard KPI Cards**: Click "Open Incidents" or "Critical Alerts" on `DashboardPage.jsx` to open the workspace pre-filtered.
 - **Visual Analytics**: Interactive Severity Breakdown Donut Charts and Lifecycle Pipeline Bar Charts.
 - **"My Incidents" Workspace Tabs**: Sub-header tabs for *All Incidents*, *Assigned to Me*, *Reported by Me*, and *Resolved*.
 - **Starred Saved Presets Bar**: 1-Click filter shortcuts (`★ P1 Critical`, `★ Assigned To Me`, `★ High Risk (>70)`, `★ Today's Incidents`).
 
 ### 5. 📄 Executive Reports & Data Exporter
-- **1-Click PDF Report Generator**: Generates formatted Executive Incident Summaries with risk metrics and incident timeline.
+- **1-Click PDF Report Generator**: Produces branded Executive Incident Summaries with risk gauges and incident metadata; any AI-labelled notes are client-side text, not external model output.
 - **Bulk CSV Exporter**: Exports filtered incident tables into downloadable CSV spreadsheets.
 
-### 6. 📝 Audit Logs & In-App Notifications
-- **Audit Logging Service**: Records creation, status updates, assignments, checklist toggles, comments, and attachment uploads with actor metadata.
+### 6. Audit Logs & In-App Notifications
+- **Audit Logging Service**: Records creation, status updates, assignments, checklist toggles, comments, and attachment uploads with actor metadata and timestamps. The current application does not provide audit-log mutation endpoints; database-level immutability is not claimed here.
 - **Notification Center Drawer**: Real-time notification drawer in `Navbar.jsx` with unread counter badge and "Mark all read" capabilities.
 
 ---
@@ -133,40 +135,62 @@ Interactive OpenAPI documentation is available when running the backend:
 #### Authentication (`/api/v1/auth`)
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/auth/register` | Public | Register a new user (`ANALYST` or `ADMIN`) |
-| `POST` | `/api/v1/auth/login` | Public | Authenticate credentials & receive JWT token |
-| `POST` | `/api/v1/auth/forgot-password` | Public | Request password reset token |
-| `POST` | `/api/v1/auth/reset-password` | Public | Apply reset token and update password |
+| `POST` | `/api/v1/auth/register` | Public | Registers a new user with selected role (`ANALYST` or `ADMIN`) |
+| `POST` | `/api/v1/auth/login` | Public | Authenticates credentials against database and returns JWT token |
+| `POST` | `/api/v1/auth/forgot-password` | Public | Requests a reset link using a username or email without revealing account existence |
+| `POST` | `/api/v1/auth/reset-password` | Public | Applies a valid, unexpired, single-use reset token to a new BCrypt password |
 
 #### Incidents (`/api/v1/incidents`)
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/incidents` | Authenticated | List all incidents |
-| `GET` | `/api/v1/incidents/page` | Authenticated | Bounded, filtered, and paginated incident records |
+| `GET` | `/api/v1/incidents` | Authenticated | Legacy unpaged list of security incidents |
+| `GET` | `/api/v1/incidents/page` | Authenticated | Get bounded, filtered, stably sorted incident pages |
 | `GET` | `/api/v1/incidents/{id}` | Authenticated | Get detailed incident by ID |
-| `GET` | `/api/v1/incidents/search?q=` | Authenticated | Full-text incident search |
-| `GET` | `/api/v1/incidents/stats` | Authenticated | Dashboard counts and analytics metrics |
-| `POST` | `/api/v1/incidents` | Analyst, Admin | Create a new incident |
+| `GET` | `/api/v1/incidents/{id}/related` | Authenticated | Get matching historical incidents |
+| `GET` | `/api/v1/incidents/search?q=` | Authenticated | Full-text PostgreSQL native search |
+| `GET` | `/api/v1/incidents/stats` | Authenticated | Get scoped dashboard counts and risk metrics |
+| `GET` | `/api/v1/incidents/analytics` | Authenticated | Get server-derived scoped analytics metrics |
+| `POST` | `/api/v1/incidents` | Analyst, Admin | Create a new security incident |
 | `PUT` | `/api/v1/incidents/{id}` | Analyst, Admin | Update incident details |
-| `PATCH` | `/api/v1/incidents/{id}/status` | Admin, Super Admin | Update incident lifecycle status |
+| `PATCH` | `/api/v1/incidents/{id}/status` | Admin, Super Admin | Update lifecycle status (`OPEN`, `INVESTIGATING`, etc.) |
 | `PATCH` | `/api/v1/incidents/{id}/assign` | Admin, Super Admin | Assign analyst to incident |
+| `PATCH` | `/api/v1/incidents/{id}/checklist/{itemId}/toggle` | Admin, Super Admin | Toggle investigation checklist item |
 | `DELETE` | `/api/v1/incidents/{id}` | Admin, Super Admin | Delete incident record |
 
-#### Evidence & Attachments (`/api/v1/attachments`)
+#### Evidence (`/api/v1/attachments`)
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/v1/attachments/upload/{incidentId}` | Authenticated | Upload file evidence |
-| `GET` | `/api/v1/attachments/incident/{incidentId}` | Authenticated | List attachments for incident |
-| `GET` | `/api/v1/attachments/files/{fileName}` | Authenticated | Download stored attachment |
-| `DELETE` | `/api/v1/attachments/{id}` | Authenticated | Delete attachment |
+| `POST` | `/api/v1/attachments/upload/{incidentId}` | Authenticated | Store an incident attachment on the configured backend filesystem |
+| `GET` | `/api/v1/attachments/incident/{incidentId}` | Authenticated | List attachments for an incident |
+| `GET` | `/api/v1/attachments/files/{fileName}` | Authenticated | Stream an attachment by stored filename |
+| `DELETE` | `/api/v1/attachments/{id}` | Authenticated | Delete an attachment record and local file |
 
-#### Comments, Audit Logs & Notifications
-| Module | Method | Endpoint | Description |
+#### Comments (`/api/v1/incidents/{incidentId}/comments`)
+| Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| **Comments** | `POST` / `GET` | `/api/v1/incidents/{id}/comments` | Post and list investigation comments |
-| **Audit Logs** | `GET` | `/api/v1/audit-logs/incident/{id}` | Retrieve incident audit trail |
-| **Notifications** | `GET` / `PATCH` | `/api/v1/notifications` | Fetch user alerts & mark as read |
-| **Users** | `GET` / `PATCH` | `/api/v1/users` | Admin console user and role management |
+| `POST` | `/api/v1/incidents/{incidentId}/comments` | Authenticated | Add a comment using the authenticated user as author |
+| `GET` | `/api/v1/incidents/{incidentId}/comments` | Authenticated | List incident comments |
+| `DELETE` | `/api/v1/incidents/{incidentId}/comments/{commentId}` | Admin, Super Admin | Delete an incident comment subject to service authorization |
+
+#### Audit Logs (`/api/v1/audit-logs`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/audit-logs/incident/{incidentId}` | Authenticated | List logs associated with an incident |
+| `GET` | `/api/v1/audit-logs` | Admin | List all audit logs |
+
+#### Notifications (`/api/v1/notifications`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/notifications` | Authenticated | List notifications for the authenticated user |
+| `GET` | `/api/v1/notifications/unread-count` | Authenticated | Return the authenticated user’s unread count |
+| `PATCH` | `/api/v1/notifications/{id}/read` | Authenticated | Mark one notification as read |
+| `PATCH` | `/api/v1/notifications/read-all` | Authenticated | Mark all notifications as read |
+
+#### User Management (`/api/v1/users`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/users` | Admin, Super Admin | Get user workload summaries |
+| `PATCH` | `/api/v1/users/{id}/role` | Admin, Super Admin | Update user role (`ANALYST` / `ADMIN`) |
 
 ---
 
