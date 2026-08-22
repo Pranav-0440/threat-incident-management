@@ -41,6 +41,7 @@ public class IncidentPermissionEvaluator implements PermissionEvaluator {
 
         return switch (permissionStr) {
             case "write" -> isAdmin || isAssignedToMe || isUnassigned;
+            case "status_update" -> isAdmin || isAssignedToMe || isReporter;
             case "read"  -> isAdmin || isAssignedToMe || isReporter;
             default -> false;
         };
