@@ -4,6 +4,9 @@
 *.env
 backend/.env
 frontend/.env
+# Public, non-secret Vite API endpoint defaults
+!frontend/.env.development
+!frontend/.env.production
 
 # Node & Frontend dependencies/builds
 node_modules/
