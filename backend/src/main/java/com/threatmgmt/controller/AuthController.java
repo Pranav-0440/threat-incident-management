@@ -8,6 +8,7 @@ import com.threatmgmt.dto.ResetPasswordRequest;
 import com.threatmgmt.exception.InvalidPasswordException;
 import com.threatmgmt.model.User;
 import com.threatmgmt.security.JwtUtil;
+import com.threatmgmt.service.LoginAttemptService;
 import com.threatmgmt.service.PasswordResetService;
 import com.threatmgmt.service.UserService;
 import jakarta.validation.Valid;
@@ -28,6 +29,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final LoginAttemptService loginAttemptService;
     private final PasswordResetService passwordResetService;
 
     @PostMapping("/register")
@@ -60,7 +62,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
+    public ResponseEntity<AuthResponse> login(
+            @Valid @RequestBody AuthRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest) {
+        loginAttemptService.checkAllowed(httpRequest, request.getUsername());
+
         // 1. Fetch user from database by username or email
         User user;
         try {
@@ -79,6 +85,7 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(
                         user.getUsername(), request.getPassword()));
 
+        loginAttemptService.recordSuccessfulLogin(httpRequest, request.getUsername());
         String token = jwtUtil.generateToken(user.getUsername(), user.getRoles());
 
         AuthResponse response = AuthResponse.builder()
