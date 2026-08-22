@@ -70,6 +70,8 @@ app:
     allowed-origins: ${APP_WEBSOCKET_ALLOWED_ORIGINS:${APP_CORS_ALLOWED_ORIGINS:*}}
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} [correlationId=%X{correlationId}] - %msg%n"
   level:
     com.threatmgmt: DEBUG
     org.springframework.security: DEBUG
