@@ -1,5 +1,6 @@
 package com.threatmgmt.service;
 
+import com.threatmgmt.dto.AnalyticsStatsResponse;
 import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
@@ -10,10 +11,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -85,9 +91,7 @@ public class IncidentService {
     }
 
     public Map<String, Object> getStats(String username, boolean privileged) {
-        List<Incident> incidents = privileged
-                ? incidentRepo.findAll()
-                : incidentRepo.findByAssignedToOrReportedBy(username, username);
+        List<Incident> incidents = getScopedIncidents(username, privileged);
 
         long total = incidents.size();
         long open = countByStatus(incidents, "OPEN");
@@ -117,6 +121,112 @@ public class IncidentService {
         stats.put("low", low);
         stats.put("averageRiskScore", averageRiskScore);
         return stats;
+    }
+
+    public AnalyticsStatsResponse getAnalytics(String username, boolean privileged) {
+        List<Incident> incidents = getScopedIncidents(username, privileged);
+        Map<String, Long> categoryCounts = countByValue(incidents, incident -> valueOrUnspecified(incident.getCategory()));
+        Map<String, Long> locationCounts = countByValue(incidents, incident -> valueOrUnspecified(incident.getLocation()));
+
+        long resolvedWithDuration = 0;
+        double totalResolutionHours = 0.0;
+        long slaEvaluated = 0;
+        long slaCompliant = 0;
+        long overdueCount = 0;
+        LocalDateTime now = LocalDateTime.now();
+        for (Incident incident : incidents) {
+            if (isResolved(incident) && incident.getCreatedAt() != null && incident.getResolvedAt() != null) {
+                totalResolutionHours += hoursBetween(incident.getCreatedAt(), incident.getResolvedAt());
+                resolvedWithDuration++;
+            }
+            if (incident.getCreatedAt() != null) {
+                LocalDateTime end = incident.getResolvedAt() != null ? incident.getResolvedAt() : now;
+                boolean withinSla = hoursBetween(incident.getCreatedAt(), end)
+                        <= slaHours(incident);
+                slaEvaluated++;
+                if (withinSla) {
+                    slaCompliant++;
+                } else {
+                    overdueCount++;
+                }
+            }
+        }
+
+        Map<String, Object> stats = getStats(username, privileged);
+        Map.Entry<String, Long> topCategory = categoryCounts.entrySet().stream()
+                .max(Map.Entry.<String, Long>comparingByValue()
+                        .thenComparing(Map.Entry.comparingByKey(Comparator.reverseOrder())))
+                .orElse(null);
+        double complianceRate = slaEvaluated == 0 ? 0.0 : (slaCompliant * 100.0) / slaEvaluated;
+        double averageResolutionHours = resolvedWithDuration == 0
+                ? 0.0
+                : totalResolutionHours / resolvedWithDuration;
+        double topCategoryPercent = topCategory == null || incidents.isEmpty()
+                ? 0.0
+                : (topCategory.getValue() * 100.0) / incidents.size();
+
+        return new AnalyticsStatsResponse(
+                ((Number) stats.get("total")).longValue(),
+                ((Number) stats.get("open")).longValue(),
+                ((Number) stats.get("investigating")).longValue(),
+                ((Number) stats.get("waiting_evidence")).longValue(),
+                ((Number) stats.get("resolved")).longValue(),
+                ((Number) stats.get("closed")).longValue(),
+                ((Number) stats.get("critical")).longValue(),
+                ((Number) stats.get("high")).longValue(),
+                ((Number) stats.get("medium")).longValue(),
+                ((Number) stats.get("low")).longValue(),
+                ((Number) stats.get("averageRiskScore")).doubleValue(),
+                averageResolutionHours,
+                complianceRate,
+                overdueCount,
+                topCategory == null ? "NONE" : topCategory.getKey(),
+                topCategoryPercent,
+                categoryCounts,
+                locationCounts);
+    }
+
+    private List<Incident> getScopedIncidents(String username, boolean privileged) {
+        return privileged
+                ? incidentRepo.findAll()
+                : incidentRepo.findByAssignedToOrReportedBy(username, username);
+    }
+
+    private Map<String, Long> countByValue(List<Incident> incidents, Function<Incident, String> valueExtractor) {
+        return incidents.stream()
+                .map(valueExtractor)
+                .collect(Collectors.groupingBy(Function.identity(), LinkedHashMap::new, Collectors.counting()));
+    }
+
+    private String valueOrUnspecified(String value) {
+        return value == null || value.isBlank() ? "UNSPECIFIED" : value;
+    }
+
+    private boolean isResolved(Incident incident) {
+        return "RESOLVED".equalsIgnoreCase(incident.getStatus())
+                || "CLOSED".equalsIgnoreCase(incident.getStatus());
+    }
+
+    private double hoursBetween(LocalDateTime start, LocalDateTime end) {
+        return Duration.between(start, end).toSeconds() / 3600.0;
+    }
+
+    private double slaHours(Incident incident) {
+        String priority = incident.getPriority();
+        if (priority == null || priority.isBlank()) {
+            priority = switch (incident.getSeverity() == null ? "" : incident.getSeverity().toUpperCase()) {
+                case "CRITICAL" -> "P1";
+                case "HIGH" -> "P2";
+                case "MEDIUM" -> "P3";
+                default -> "P4";
+            };
+        }
+        return switch (priority.toUpperCase()) {
+            case "P1" -> 4.0;
+            case "P2" -> 8.0;
+            case "P3" -> 24.0;
+            default -> 72.0;
+        };
     }
 
     private long countByStatus(List<Incident> incidents, String status) {
