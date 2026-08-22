@@ -6,9 +6,9 @@ const getApiBaseUrl = () => {
   }
   // If running in production browser environment (e.g. Vercel)
   if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-    return 'https://threat-incident-management-gj99.onrender.com/api/v1';
+    return 'https://threat-incident-management.onrender.com/api/v1';
   }
-  return 'http://localhost:8080/api/v1';
+  return 'https://threat-incident-management.onrender.com/api/v1';
 };
 
 const API_BASE_URL = getApiBaseUrl();
