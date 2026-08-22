@@ -7,9 +7,9 @@
 [![Supabase](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E.svg)](https://supabase.com/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**ThreatGuard** is a full-stack, enterprise-grade Security Operations Center (SOC) platform designed for Security Analysts, SOC Managers, and Administrators to report, investigate, triage, collaborate, and resolve physical and cybersecurity threats.
+**ThreatGuard** is a full-stack Security Operations Center (SOC) reference application for reporting, investigating, triaging, collaborating on, and resolving physical and cybersecurity incidents.
 
-Built with a high-performance **Spring Boot 3.3** backend, **Supabase PostgreSQL** (with optional local Docker container options), and a responsive **React 19** dashboard frontend with interactive AI SOC Copilot intelligence.
+Built with a **Spring Boot 3.3** backend, **Supabase PostgreSQL** (with an optional local PostgreSQL container), and a responsive **React 19** dashboard. The current AI-labelled experiences are deterministic client-side helpers; they do not call an external LLM service.
 
 ---
 
@@ -27,40 +27,44 @@ graph TD
     User([Browser Client / React 19 App]) -->|HTTPS / REST API| Nginx[Production Nginx / Vercel]
     Nginx -->|JWT Bearer Auth| SpringBoot[Spring Boot 3.3.5 Backend Service]
     
-    subgraph Core Security & Storage Layer
-        SpringBoot -->|Primary DB: Spring Data JPA| Supabase[(Supabase PostgreSQL / Local Postgres)]
-        SpringBoot -->|Optional Local Container| DockerDB[(Local Docker: Postgres / Mongo 7)]
-        SpringBoot -->|Local Disk Storage| UploadsDir[./uploads/incidents/ File Store]
+    subgraph Persistence
+        SpringBoot -->|Spring Data JPA| Postgres[(Supabase PostgreSQL / Local PostgreSQL)]
+        SpringBoot -->|Configured local filesystem| UploadsDir[uploads/ File Store]
+        SpringBoot -.->|Optional integration; disabled by default| Elasticsearch[(Elasticsearch)]
     end
 
-    subgraph SOC Intelligence Engine
-        SpringBoot -->|Risk Scoring & SLA Matrix| RiskEngine[Automated Risk & Priority Calculator]
-        SpringBoot -->|Audit Logging Service| AuditLogs[(Immutable Audit Logs)]
-        SpringBoot -->|Notification Engine| Notifications[In-App Bell Alerts]
+    subgraph Application Services
+        SpringBoot -->|Risk score and priority calculation| RiskEngine[Deterministic Risk Calculator]
+        SpringBoot -->|Audit logging service| AuditLogs[(Audit Log Records)]
+        SpringBoot -->|Notification service| Notifications[In-App Notifications]
     end
 ```
 
+PostgreSQL is the backend system of record. The Docker Compose MongoDB service is retained as an optional development container but is not used by the current JPA persistence layer. Elasticsearch support is optional and its auto-configuration is disabled by default. Evidence files use the local filesystem path configured by `file.upload-dir` (default `uploads`); production deployments therefore require persistent/shared storage or an explicitly configured storage provider.
+
 ---
 
-## 🚀 Key Feature Modules (Complete 10-Phase Roadmap)
+## Key Feature Modules
 
 ### 1. 🔒 Hardened Authentication & Role-Based Access Control (RBAC)
 - **Role Selection Cards**: Register as a **SOC Analyst** or **Administrator** directly on the sign-up page.
 - **First-User Bootstrap**: The first registered system account automatically receives `ROLE_SUPER_ADMIN`.
+- **Effective Role Hierarchy**: A `ROLE_SUPER_ADMIN` account is treated as an administrator and analyst by the database-backed authority mapping; ordinary registration accepts only `ANALYST` or `ADMIN`.
+- **Login Identifier**: Authentication accepts either the username or the registered email address.
 - **Admin User Management Console (`/admin/users`)**: Dedicated admin control panel to view registered analyst accounts, manage roles (`ANALYST` / `ADMIN`), and review active assigned workloads.
 
 ### 2. 🕵️ Security Analyst Investigation Workspace
 - **Tabbed Workspace (`IncidentDetailPage.jsx`)**:
-  - **Overview**: High-level metadata, risk assessment score gauge (0-100), AI executive summary, and 6-item interactive SOC investigation checklist.
-  - **Timeline**: Vertical Jira-style chronological history rendering immutable audit logs.
+  - **Overview**: High-level metadata, risk assessment score gauge (0-100), client-side executive summary preview, and 6-item interactive SOC investigation checklist.
+  - **Timeline**: Vertical Jira-style chronological history rendering audit-log records.
   - **Comments**: Threaded investigation discussion box.
   - **Evidence Files**: Multi-media file manager supporting screenshots, log files, PDFs, audio/video.
 - **Lifecycle Stepper**: Visual 5-step progress pipeline (`OPEN` → `INVESTIGATING` → `WAITING_EVIDENCE` → `RESOLVED` → `CLOSED`).
 
-### 3. 🤖 AI SOC Copilot & Intelligence Engine
-- **Floating AI Assistant (`AiCopilotWidget.jsx`)**: Global persistent floating chat widget answering queries such as *"What is highest priority?"*, *"Summarize today's threats"*, *"Recommend mitigation actions"*.
-- **AI Auto-Classification (`CreateIncidentPage.jsx`)**: Auto-suggests severity, threat category, priority (`P1-P4`), and initial risk score.
-- **AI Executive Summarizer**: 1-click generation of concise executive summaries from detailed descriptions and evidence logs.
+### 3. AI-Labelled Client Helpers
+- **Floating Assistant (`AiCopilotWidget.jsx`)**: An authenticated client-side helper that fetches incidents and applies deterministic keyword rules for common investigation prompts.
+- **Auto-Suggestion (`CreateIncidentPage.jsx`)**: A local keyword heuristic suggests severity, category, priority (`P1-P4`), and risk score; the user remains responsible for the submitted values.
+- **Executive Summary Preview (`IncidentDetailPage.jsx`)**: Generates a deterministic client-side summary from incident fields. There is no external LLM or backend AI endpoint in the current implementation.
 
 ### 4. 📊 Dashboard Analytics & Interactive Workspaces
 - **Clickable Dashboard KPI Cards**: Click "Open Incidents" or "Critical Alerts" on `DashboardPage.jsx` to open the workspace pre-filtered.
@@ -69,18 +73,18 @@ graph TD
 - **Starred Saved Presets Bar**: 1-Click filter shortcuts (`★ P1 Critical`, `★ Assigned To Me`, `★ High Risk (>70)`, `★ Today's Incidents`).
 
 ### 5. 📄 Executive Reports & Data Exporter
-- **1-Click PDF Report Generator**: Produces branded Executive Incident Summaries with risk gauges, metadata, and AI notes.
+- **1-Click PDF Report Generator**: Produces branded Executive Incident Summaries with risk gauges and incident metadata; any AI-labelled notes are client-side text, not external model output.
 - **Bulk CSV Exporter**: Exports filtered incident tables into downloadable CSV spreadsheets.
 
-### 6. 📜 Immutable Audit Logs & In-App Notifications
-- **Audit Logging Service**: Automatically records every creation, status update, assignment, checklist toggle, comment, and attachment upload with author name and timestamp.
+### 6. Audit Logs & In-App Notifications
+- **Audit Logging Service**: Records creation, status updates, assignments, checklist toggles, comments, and attachment uploads with actor metadata and timestamps. The current application does not provide audit-log mutation endpoints; database-level immutability is not claimed here.
 - **Notification Center Drawer**: Real-time notification drawer in `Navbar.jsx` with unread counter badge and "Mark all read" capabilities.
 
 ---
 
 ## ⚖️ Risk Score & Priority Matrix Formula
 
-ThreatGuard calculates a dynamic Risk Score ($0 - 100$) and assigns a Priority level ($P1 - P4$) upon incident creation:
+ThreatGuard calculates a risk score from the submitted severity and category and assigns a priority during incident creation. The score is capped at 100; priority selection uses severity first and then risk thresholds. The table below documents classification logic, not an independently enforced SLA system:
 
 $$\text{Risk Score} = \text{Severity Weight} + \text{Category Weight}$$
 
@@ -105,7 +109,7 @@ $$\text{Risk Score} = \text{Severity Weight} + \text{Category Weight}$$
 | 🔴 **P1 - Critical** | Severity = CRITICAL or Risk Score $\ge 70$ | **4 Hours** |
 | 🟠 **P2 - High** | Severity = HIGH or Risk Score $\ge 50$ | **8 Hours** |
 | 🟡 **P3 - Medium** | Severity = MEDIUM or Risk Score $\ge 30$ | **24 Hours** |
-| 🟢 **P4 - Low** | Severity = LOW or Risk Score $< 30$ | **48 Hours** |
+| 🟢 **P4 - Low** | Severity = LOW or Risk Score $< 30$ | No backend response-time timer |
 
 ---
 
@@ -126,23 +130,60 @@ Password reset delivery is disabled by default. To enable SMTP delivery, set `AP
 ### Incidents (`/api/v1/incidents`)
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/incidents` | Authenticated | List all security incidents |
+| `GET` | `/api/v1/incidents` | Authenticated | Legacy unpaged list of security incidents |
 | `GET` | `/api/v1/incidents/{id}` | Authenticated | Get detailed incident by ID |
 | `GET` | `/api/v1/incidents/{id}/related` | Authenticated | Get matching historical incidents |
 | `GET` | `/api/v1/incidents/search?q=` | Authenticated | Full-text PostgreSQL native search |
-| `GET` | `/api/v1/incidents/stats` | Authenticated | Get dashboard KPI statistics and risk metrics |
+| `GET` | `/api/v1/incidents/stats` | Authenticated | Get scoped dashboard counts and risk metrics |
+| `GET` | `/api/v1/incidents/analytics` | Authenticated | Get server-derived scoped analytics metrics |
+| `GET` | `/api/v1/incidents/page` | Authenticated | Get bounded, filtered, stably sorted incident pages |
 | `POST` | `/api/v1/incidents` | Analyst, Admin | Create a new security incident |
 | `PUT` | `/api/v1/incidents/{id}` | Analyst, Admin | Update incident details |
-| `PATCH` | `/api/v1/incidents/{id}/status` | Analyst, Admin | Update lifecycle status (`OPEN`, `INVESTIGATING`, etc.) |
-| `PATCH` | `/api/v1/incidents/{id}/assign` | Analyst, Admin | Assign analyst to incident |
-| `PATCH` | `/api/v1/incidents/{id}/checklist/{itemId}/toggle` | Analyst, Admin | Toggle investigation checklist item |
-| `DELETE` | `/api/v1/incidents/{id}` | Admin | Delete incident record |
+| `PATCH` | `/api/v1/incidents/{id}/status` | Admin, Super Admin | Update lifecycle status (`OPEN`, `INVESTIGATING`, etc.) |
+| `PATCH` | `/api/v1/incidents/{id}/assign` | Admin, Super Admin | Assign analyst to incident |
+| `PATCH` | `/api/v1/incidents/{id}/checklist/{itemId}/toggle` | Admin, Super Admin | Toggle investigation checklist item |
+| `DELETE` | `/api/v1/incidents/{id}` | Admin, Super Admin | Delete incident record |
+
+### Evidence (`/api/v1/attachments`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/attachments/upload/{incidentId}` | Authenticated | Store an incident attachment on the configured backend filesystem |
+| `GET` | `/api/v1/attachments/incident/{incidentId}` | Authenticated | List attachments for an incident |
+| `GET` | `/api/v1/attachments/files/{fileName}` | Authenticated | Stream an attachment by stored filename |
+| `DELETE` | `/api/v1/attachments/{id}` | Authenticated | Delete an attachment record and local file |
+
+### Comments (`/api/v1/incidents/{incidentId}/comments`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/v1/incidents/{incidentId}/comments` | Authenticated | Add a comment using the authenticated user as author |
+| `GET` | `/api/v1/incidents/{incidentId}/comments` | Authenticated | List incident comments |
+| `DELETE` | `/api/v1/incidents/{incidentId}/comments/{commentId}` | Admin, Super Admin | Delete an incident comment subject to service authorization |
+
+### Audit Logs (`/api/v1/audit-logs`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/audit-logs/incident/{incidentId}` | Authenticated | List logs associated with an incident |
+| `GET` | `/api/v1/audit-logs` | Admin | List all audit logs |
+
+### Notifications (`/api/v1/notifications`)
+| Method | Endpoint | Access | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/notifications` | Authenticated | List notifications for the authenticated user |
+| `GET` | `/api/v1/notifications/unread-count` | Authenticated | Return the authenticated user’s unread count |
+| `PATCH` | `/api/v1/notifications/{id}/read` | Authenticated | Mark one notification as read |
+| `PATCH` | `/api/v1/notifications/read-all` | Authenticated | Mark all notifications as read |
 
 ### User Management (`/api/v1/users`)
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/users` | Authenticated | Get all users with assigned workload stats |
-| `PATCH` | `/api/v1/users/{id}/role` | Admin | Update user role (`ANALYST` / `ADMIN`) |
+| `GET` | `/api/v1/users` | Admin, Super Admin | Get user workload summaries |
+| `PATCH` | `/api/v1/users/{id}/role` | Admin, Super Admin | Update user role (`ANALYST` / `ADMIN`) |
+
+---
+
+## Deployment Caveats
+
+The current evidence implementation stores files on the backend filesystem and returns API download routes. Set `file.upload-dir` to a persistent/shared volume in production; an ephemeral container filesystem is not suitable for durable evidence retention. The frontend AI-labelled features are local heuristics and templates, not a security-grade autonomous decision engine. Treat generated suggestions as advisory and verify them before taking incident-response action.
 
 ---
 
