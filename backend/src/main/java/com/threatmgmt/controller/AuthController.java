@@ -2,10 +2,13 @@ package com.threatmgmt.controller;
 
 import com.threatmgmt.dto.AuthRequest;
 import com.threatmgmt.dto.AuthResponse;
+import com.threatmgmt.dto.ForgotPasswordRequest;
 import com.threatmgmt.dto.RegisterRequest;
+import com.threatmgmt.dto.ResetPasswordRequest;
 import com.threatmgmt.exception.InvalidPasswordException;
 import com.threatmgmt.model.User;
 import com.threatmgmt.security.JwtUtil;
+import com.threatmgmt.service.PasswordResetService;
 import com.threatmgmt.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +28,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -38,6 +42,21 @@ public class AuthController {
                 .build();
 
         return ResponseEntity.status(201).body(response);
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<java.util.Map<String, String>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+        passwordResetService.requestReset(request.identifier());
+        return ResponseEntity.accepted().body(java.util.Map.of(
+                "message", "If an account matches that identifier, a password reset link will be sent."));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<java.util.Map<String, String>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request.token(), request.newPassword());
+        return ResponseEntity.ok(java.util.Map.of("message", "Password reset successfully."));
     }
 
     @PostMapping("/login")
