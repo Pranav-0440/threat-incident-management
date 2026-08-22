@@ -91,6 +91,7 @@ export const incidentsAPI = {
   getBySeverity: (severity) => client.get(`/incidents/severity/${severity}`),
   getByStatus: (status) => client.get(`/incidents/status/${status}`),
   getStats: () => client.get('/incidents/stats'),
+  getAnalytics: () => client.get('/incidents/analytics'),
 };
 
 // ========== Comments API ==========
