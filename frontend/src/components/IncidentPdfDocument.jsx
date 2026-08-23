@@ -114,25 +114,37 @@ const styles = StyleSheet.create({
   },
 });
 
+const SEVERITY_COLORS = {
+  CRITICAL: { backgroundColor: '#fee2e2', color: '#ef4444' },
+  HIGH: { backgroundColor: '#ffedd5', color: '#ea580c' },
+  MEDIUM: { backgroundColor: '#fef9c3', color: '#ca8a04' },
+  LOW: { backgroundColor: '#dcfce7', color: '#16a34a' },
+};
+
+const getSeverityStyle = (severity) => {
+  return SEVERITY_COLORS[severity] || SEVERITY_COLORS.LOW;
+};
+
+const getRiskTier = (score) => {
+  if (score >= 70) return 'CRITICAL';
+  if (score >= 50) return 'HIGH';
+  if (score >= 30) return 'MEDIUM';
+  return 'LOW';
+};
+
 export default function IncidentPdfDocument({ incident = {} }) {
   const severity = (incident.severity || 'LOW').toUpperCase();
   const priority = (incident.priority || 'P3').toUpperCase();
-  const status = (incident.status || 'OPEN').replace(/_/g, ' ');
+  const status = (incident.status || 'OPEN').replaceAll('_', ' ');
+  const category = (incident.category || 'N/A').replaceAll('_', ' ');
   const riskScore = incident.riskScore ?? 0;
   const createdDate = incident.createdAt
     ? new Date(incident.createdAt).toLocaleString()
     : 'N/A';
-
-  const severityStyle = {
-    backgroundColor:
-      severity === 'CRITICAL' ? '#fee2e2' :
-      severity === 'HIGH' ? '#ffedd5' :
-      severity === 'MEDIUM' ? '#fef9c3' : '#dcfce7',
-    color:
-      severity === 'CRITICAL' ? '#ef4444' :
-      severity === 'HIGH' ? '#ea580c' :
-      severity === 'MEDIUM' ? '#ca8a04' : '#16a34a',
-  };
+  const assignedAnalyst = incident.assignedToName || incident.assignedTo || 'Unassigned';
+  const department = incident.department || 'SOC Team';
+  const severityStyle = getSeverityStyle(severity);
+  const riskTier = getRiskTier(riskScore);
 
   return (
     <Document>
@@ -160,12 +172,12 @@ export default function IncidentPdfDocument({ incident = {} }) {
           </View>
           <View style={styles.gridItem}>
             <Text style={styles.fieldLabel}>Category</Text>
-            <Text style={styles.fieldValue}>{(incident.category || 'N/A').replace(/_/g, ' ')}</Text>
+            <Text style={styles.fieldValue}>{category}</Text>
           </View>
           <View style={styles.gridItem}>
             <Text style={styles.fieldLabel}>Assigned Analyst</Text>
             <Text style={styles.fieldValue}>
-              {incident.assignedToName || incident.assignedTo || 'Unassigned'} ({incident.department || 'SOC Team'})
+              {assignedAnalyst} ({department})
             </Text>
           </View>
           <View style={styles.gridItem}>
@@ -186,9 +198,7 @@ export default function IncidentPdfDocument({ incident = {} }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Risk Assessment Score: {riskScore} / 100</Text>
           <View style={styles.contentBox}>
-            <Text>
-              Assessed Risk Level: {riskScore >= 70 ? 'CRITICAL' : riskScore >= 50 ? 'HIGH' : riskScore >= 30 ? 'MEDIUM' : 'LOW'}
-            </Text>
+            <Text>Assessed Risk Level: {riskTier}</Text>
           </View>
         </View>
 

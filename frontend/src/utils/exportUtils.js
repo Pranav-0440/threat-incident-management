@@ -13,7 +13,7 @@ export function exportIncidentsCSV(incidents) {
   
   const rows = incidents.map(inc => [
     `"${inc.id || ''}"`,
-    `"${(inc.title || '').replace(/"/g, '""')}"`,
+    `"${(inc.title || '').replaceAll('"', '""')}"`,
     `"${inc.severity || ''}"`,
     `"${inc.priority || ''}"`,
     `"${inc.category || ''}"`,
@@ -31,7 +31,7 @@ export function exportIncidentsCSV(incidents) {
   link.setAttribute('download', `threat_incidents_${new Date().toISOString().slice(0, 10)}.csv`);
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
+  link.remove();
 }
 
 export async function exportIncidentPDF(incident) {
@@ -51,7 +51,7 @@ export async function exportIncidentPDF(incident) {
     link.download = `incident_report_${incident.id || 'export'}_${sanitizedTitle}.pdf`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     URL.revokeObjectURL(url);
   } catch (error) {
     console.error('Failed to generate PDF report:', error);
