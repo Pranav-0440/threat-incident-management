@@ -1,19 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../api/client';
-import { Shield, LogIn, Mail } from 'lucide-react';
+import { Shield, LogIn } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [forgotOpen, setForgotOpen] = useState(false);
-  const [forgotIdentifier, setForgotIdentifier] = useState('');
-  const [forgotMessage, setForgotMessage] = useState('');
-  const [forgotError, setForgotError] = useState('');
-  const [forgotLoading, setForgotLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -40,22 +34,6 @@ export default function LoginPage() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleForgotPassword = async (e) => {
-    e.preventDefault();
-    setForgotMessage('');
-    setForgotError('');
-    setForgotLoading(true);
-
-    try {
-      const response = await authAPI.forgotPassword(forgotIdentifier.trim());
-      setForgotMessage(response.data?.message || 'If an account matches that identifier, a password reset link will be sent.');
-    } catch (err) {
-      setForgotError(err.response?.data?.message || 'Unable to process the password reset request. Please try again later.');
-    } finally {
-      setForgotLoading(false);
     }
   };
 
@@ -120,44 +98,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <button
-          type="button"
-          className="auth-link-button"
-          onClick={() => {
-            setForgotOpen((open) => !open);
-            setForgotMessage('');
-            setForgotError('');
-          }}
-          aria-expanded={forgotOpen}
-        >
-          Forgot password?
-        </button>
-
-        {forgotOpen && (
-          <div className="auth-reset-panel">
-            <h2>Reset your password</h2>
-            <p>Enter your username or email. If an account matches, we will send a reset link.</p>
-            {forgotError && <div className="auth-error">{forgotError}</div>}
-            {forgotMessage && <div className="auth-success">{forgotMessage}</div>}
-            <form onSubmit={handleForgotPassword}>
-              <div className="form-group">
-                <label className="form-label" htmlFor="forgot-identifier">Username or Email</label>
-                <input
-                  id="forgot-identifier"
-                  type="text"
-                  className="form-input"
-                  value={forgotIdentifier}
-                  onChange={(e) => setForgotIdentifier(e.target.value)}
-                  required
-                  autoComplete="username"
-                />
-              </div>
-              <button type="submit" className="btn btn-secondary" disabled={forgotLoading} style={{ width: '100%' }}>
-                {forgotLoading ? <span className="spinner" style={{ width: 18, height: 18, borderWidth: 2 }} /> : <><Mail size={18} /> Send reset link</>}
-              </button>
-            </form>
-          </div>
-        )}
+       <Link to="/forgot-password" className="auth-link-button">Forgot password?</Link>
 
         <div className="auth-footer">
           Don&apos;t have an account?{' '}
