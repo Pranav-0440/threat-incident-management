@@ -4,6 +4,7 @@ import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import IncidentsPage from './pages/IncidentsPage';
 import IncidentDetailPage from './pages/IncidentDetailPage';
@@ -72,6 +73,12 @@ function AppRoutes() {
         path="/reset-password"
         element={
           isAuthenticated() ? <Navigate to="/" replace /> : <ResetPasswordPage />
+        }
+      />
+       <Route
+        path="/forgot-password"
+        element={
+          isAuthenticated() ? <Navigate to="/" replace /> : <ForgotPasswordPage />
         }
       />
 
