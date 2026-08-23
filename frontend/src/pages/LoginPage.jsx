@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { authAPI } from '../api/client';
-import { Shield, LogIn, Mail } from 'lucide-react';
+import { Shield, LogIn } from 'lucide-react';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
