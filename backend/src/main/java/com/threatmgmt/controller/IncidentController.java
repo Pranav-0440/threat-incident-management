@@ -7,11 +7,13 @@ import com.threatmgmt.service.IncidentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -56,6 +58,21 @@ public class IncidentController {
                 incidents.getContent(), incidents.getNumber(), incidents.getSize(),
                 incidents.getTotalElements(), incidents.getTotalPages(), incidents.isFirst(),
                 incidents.isLast(), incidents.getSort().toString()));
+    }
+
+    @GetMapping("/filter")
+    public ResponseEntity<List<Incident>> filter(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) List<String> severity,
+            @RequestParam(required = false) List<String> status,
+            @RequestParam(required = false) List<String> category,
+            @RequestParam(required = false) List<String> priority,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            Authentication authentication) {
+        return ResponseEntity.ok(incidentService.filterIncidents(
+                authentication.getName(), isPrivileged(authentication), query,
+                severity, status, category, priority, startDate, endDate));
     }
 
     @GetMapping("/{id}")

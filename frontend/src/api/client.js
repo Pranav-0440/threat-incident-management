@@ -76,9 +76,33 @@ export const authAPI = {
 };
 
 // ========== Incidents API ==========
+const buildIncidentFilterQuery = (filters = {}) => {
+  const params = new URLSearchParams();
+  const repeatedFilters = {
+    severity: filters.severities,
+    status: filters.statuses,
+    category: filters.categories,
+    priority: filters.priorities,
+  };
+
+  Object.entries(repeatedFilters).forEach(([key, values]) => {
+    (values || []).forEach((value) => params.append(key, value));
+  });
+  if (filters.query?.trim()) params.set('query', filters.query.trim());
+  if (filters.startDate) params.set('startDate', filters.startDate);
+  if (filters.endDate) params.set('endDate', filters.endDate);
+
+  const query = params.toString();
+  return query ? `?${query}` : '';
+};
+
 export const incidentsAPI = {
   getAll: () => client.get('/incidents'),
+<<<<<<< HEAD
   getPage: (params = {}) => client.get('/incidents/page', { params }),
+=======
+  getFiltered: (filters = {}) => client.get(`/incidents/filter${buildIncidentFilterQuery(filters)}`),
+>>>>>>> 18d8530 (feat: add advanced incident filters)
   getById: (id) => client.get(`/incidents/${id}`),
   create: (incident) => client.post('/incidents', incident),
   update: (id, incident) => client.put(`/incidents/${id}`, incident),
