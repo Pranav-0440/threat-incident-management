@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Sparkles, X, Send, Bot, ArrowRight } from 'lucide-react';
 import { incidentsAPI } from '../api/client';
 import { Link } from 'react-router-dom';
+import { buildMitrePlaybook } from '../utils/mitrePlaybook';
 
 export default function AiCopilotWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,7 +10,7 @@ export default function AiCopilotWidget() {
     {
       id: 'init-1',
       sender: 'ai',
-      text: 'Hello Analyst! I am your AI SOC Assistant. How can I help with your security investigations today?',
+      text: 'Hello Analyst! I am your SOC Copilot. I can summarize incidents, recommend review actions, and generate transparent MITRE ATT&CK playbook candidates.',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -22,7 +23,8 @@ export default function AiCopilotWidget() {
     'What is highest priority?',
     'Summarize today incidents',
     'Recommend mitigation actions',
-    'Show critical threats'
+    'Show critical threats',
+    'Map the highest-risk incident to MITRE ATT&CK'
   ];
 
   const scrollToBottom = () => {
@@ -66,8 +68,14 @@ export default function AiCopilotWidget() {
       const q = text.toLowerCase();
       let replyText = '';
       let actionLink = null;
+      let playbook = null;
 
-      if (q.includes('priority') || q.includes('highest')) {
+      if (q.includes('mitre') || q.includes('playbook') || q.includes('technique')) {
+        playbook = buildMitrePlaybook(incidents);
+        replyText = playbook.techniques.length > 0
+          ? `Generated an evidence-based MITRE ATT&CK mapping for "${playbook.incidentTitle}" with ${playbook.techniques.length} candidate technique(s). Review the evidence before treating any mapping as confirmed.`
+          : `No supported MITRE ATT&CK technique was matched confidently for "${playbook.incidentTitle || 'the selected incident'}". The checklist below focuses on evidence preservation and analyst review.`;
+      } else if (q.includes('priority') || q.includes('highest')) {
         const p1s = incidents.filter(i => i.priority === 'P1' || i.severity === 'CRITICAL');
         if (p1s.length > 0) {
           replyText = `Found ${p1s.length} P1 Critical Incident(s). Highest risk score is ${p1s[0].riskScore}/100: "${p1s[0].title}".`;
@@ -99,6 +107,7 @@ export default function AiCopilotWidget() {
             sender: 'ai',
             text: replyText,
             link: actionLink,
+            playbook,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
           }
         ]);
@@ -199,9 +208,10 @@ export default function AiCopilotWidget() {
                 <Bot size={20} />
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '15px', color: '#f8fafc' }}>SOC Copilot AI</h4>
-                <span style={{ fontSize: '11px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span> Live SOC Intelligence
+                <h4 style={{ margin: 0, fontSize: '15px', color: '#f8fafc' }}>SOC Copilot</h4>
+                                  <span style={{ fontSize: '11px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }}></span> Deterministic SOC Assistance
+
                 </span>
               </div>
             </div>
@@ -283,6 +293,28 @@ export default function AiCopilotWidget() {
                       >
                         {m.link.label} <ArrowRight size={12} />
                       </Link>
+                    </div>
+                  )}
+                  {m.playbook && (
+                    <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #475569' }}>
+                      <div style={{ fontSize: '11px', color: '#cbd5e1', marginBottom: '8px' }}>
+                        {m.playbook.mappingMode} · {m.playbook.incidentTitle}
+                      </div>
+                      {m.playbook.techniques.map((technique) => (
+                        <a
+                          key={technique.id}
+                          href={technique.sourceUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ display: 'block', color: '#93c5fd', fontSize: '12px', marginBottom: '4px' }}
+                        >
+                          {technique.id} — {technique.name} ({technique.tactic})
+                        </a>
+                      ))}
+                      <div style={{ marginTop: '8px', fontSize: '11px', color: '#94a3b8' }}>Analyst checklist</div>
+                      <ul style={{ margin: '4px 0 0 16px', padding: 0, color: '#cbd5e1', fontSize: '11px' }}>
+                        {m.playbook.checklist.map((step) => <li key={step} style={{ marginBottom: '3px' }}>{step}</li>)}
+                      </ul>
                     </div>
                   )}
                 </div>
