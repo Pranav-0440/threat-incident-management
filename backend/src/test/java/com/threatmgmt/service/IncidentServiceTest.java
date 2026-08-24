@@ -29,6 +29,9 @@ class IncidentServiceTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private IncidentCollaborationPublisher collaborationPublisher;
+
     @InjectMocks
     private IncidentService incidentService;
 
@@ -126,6 +129,7 @@ class IncidentServiceTest {
 
         assertEquals("INVESTIGATING", result.getStatus());
         assertNotNull(result.getUpdatedAt());
+        verify(collaborationPublisher).publishStatusChanged(result, "OPEN", "system");
     }
 
     @Test

@@ -26,6 +26,7 @@ public class IncidentService {
     private final IncidentRepository incidentRepo;
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
+    private final IncidentCollaborationPublisher collaborationPublisher;
 
     @Autowired(required = false)
     private IncidentSearchRepository searchRepo;
@@ -244,6 +245,7 @@ public class IncidentService {
             );
         }
 
+        collaborationPublisher.publishStatusChanged(saved, oldStatus, updatedBy);
         return saved;
     }
 

@@ -11,7 +11,7 @@ const getApiBaseUrl = () => {
   return 'https://threat-incident-management.onrender.com/api/v1';
 };
 
-const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = getApiBaseUrl();
 
 const client = axios.create({
   baseURL: API_BASE_URL,

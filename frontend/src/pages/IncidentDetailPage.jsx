@@ -31,11 +31,12 @@ import {
 } from 'lucide-react';
 import CopyButton from '../components/CopyButton';
 import { copyTextToClipboard } from '../utils/clipboard';
+import { subscribeToIncidentUpdates } from '../utils/incidentCollaboration';
 
 export default function IncidentDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, token } = useAuth();
   const [incident, setIncident] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -128,6 +129,14 @@ export default function IncidentDetailPage() {
       isMounted = false;
     };
   }, [id, navigate]);
+
+  useEffect(() => subscribeToIncidentUpdates(token, (event) => {
+    if (event.eventType !== 'INCIDENT_STATUS_CHANGED' || event.incidentId !== id) return;
+    setIncident((current) => current
+      ? { ...current, status: event.status, updatedAt: event.occurredAt }
+      : current
+    );
+  }), [id, token]);
 
   const handleStatusUpdate = async (newStatus) => {
     setUpdatingStatus(true);
