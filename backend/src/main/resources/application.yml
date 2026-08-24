@@ -66,6 +66,8 @@ app:
     mail-enabled: ${APP_PASSWORD_RESET_MAIL_ENABLED:false}
     frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:5173}
     mail-from: ${APP_PASSWORD_RESET_MAIL_FROM:no-reply@threatguard.local}
+  websocket:
+    allowed-origins: ${APP_WEBSOCKET_ALLOWED_ORIGINS:${APP_CORS_ALLOWED_ORIGINS:*}}
 
 logging:
   level:

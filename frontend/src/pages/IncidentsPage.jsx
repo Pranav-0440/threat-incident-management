@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import IncidentCard from '../components/IncidentCard';
 import SearchBar from '../components/SearchBar';
 import { exportIncidentsCSV } from '../utils/exportUtils';
+import { subscribeToIncidentUpdates } from '../utils/incidentCollaboration';
 import { PlusCircle, AlertTriangle, Download, Star } from 'lucide-react';
 
 const SEVERITY_FILTERS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
@@ -13,7 +14,7 @@ const STATUS_FILTERS = ['ALL', 'OPEN', 'INVESTIGATING', 'WAITING_EVIDENCE', 'RES
 const CATEGORY_FILTERS = ['ALL', 'WORKPLACE_VIOLENCE', 'THREAT', 'SUSPICIOUS_ACTIVITY', 'CYBER_THREAT', 'PHYSICAL_SECURITY'];
 
 export default function IncidentsPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,6 +47,15 @@ export default function IncidentsPage() {
 
     fetchIncidents();
   }, []);
+
+  useEffect(() => subscribeToIncidentUpdates(token, (event) => {
+    if (event.eventType !== 'INCIDENT_STATUS_CHANGED') return;
+    setIncidents((current) => current.map((incident) => (
+      incident.id === event.incidentId
+        ? { ...incident, status: event.status, updatedAt: event.occurredAt }
+        : incident
+    )));
+  }), [token]);
 
   const handleApplyPreset = (presetName) => {
     setSeverityFilter('ALL');
