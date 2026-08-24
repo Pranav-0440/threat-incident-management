@@ -17,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
-import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Base64;
 
@@ -38,7 +37,6 @@ public class PasswordResetService {
     private String frontendBaseUrl = "http://localhost:5173";
 
     private final SecureRandom secureRandom = new SecureRandom();
-    private final Clock clock = Clock.systemUTC();
 
     @Transactional
     public void requestReset(String identifier) {
@@ -58,7 +56,7 @@ public class PasswordResetService {
         PasswordResetToken resetToken = PasswordResetToken.builder()
                 .tokenHash(hashToken(rawToken))
                 .user(user)
-                .expiresAt(LocalDateTime.now(clock).plusMinutes(TOKEN_LIFETIME_MINUTES))
+                .expiresAt(LocalDateTime.now().plusMinutes(TOKEN_LIFETIME_MINUTES))
                 .used(false)
                 .build();
         tokenRepository.save(resetToken);
@@ -85,7 +83,7 @@ public class PasswordResetService {
 
         PasswordResetToken resetToken = tokenRepository.findByTokenHash(hashToken(rawToken.trim()))
                 .orElseThrow(PasswordResetTokenException::new);
-        if (resetToken.isUsed() || !resetToken.getExpiresAt().isAfter(LocalDateTime.now(clock))) {
+        if (resetToken.isUsed() || !resetToken.getExpiresAt().isAfter(LocalDateTime.now())) {
             throw new PasswordResetTokenException();
         }
 
