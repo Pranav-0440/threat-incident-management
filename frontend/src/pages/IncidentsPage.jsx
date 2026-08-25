@@ -5,12 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import IncidentCard from '../components/IncidentCard';
 import SearchBar from '../components/SearchBar';
 import { exportIncidentsCSV } from '../utils/exportUtils';
-<<<<<<< HEAD
 import { subscribeToIncidentUpdates } from '../utils/incidentCollaboration';
-import { PlusCircle, AlertTriangle, Download, Star } from 'lucide-react';
-=======
 import { PlusCircle, AlertTriangle, Download, Star, Filter, RotateCcw } from 'lucide-react';
->>>>>>> 18d8530 (feat: add advanced incident filters)
 
 const SEVERITY_FILTERS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const PRIORITY_FILTERS = ['ALL', 'P1', 'P2', 'P3', 'P4'];

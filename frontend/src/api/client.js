@@ -98,11 +98,8 @@ const buildIncidentFilterQuery = (filters = {}) => {
 
 export const incidentsAPI = {
   getAll: () => client.get('/incidents'),
-<<<<<<< HEAD
   getPage: (params = {}) => client.get('/incidents/page', { params }),
-=======
   getFiltered: (filters = {}) => client.get(`/incidents/filter${buildIncidentFilterQuery(filters)}`),
->>>>>>> 18d8530 (feat: add advanced incident filters)
   getById: (id) => client.get(`/incidents/${id}`),
   create: (incident) => client.post('/incidents', incident),
   update: (id, incident) => client.put(`/incidents/${id}`, incident),
