@@ -3,6 +3,7 @@ package com.threatmgmt.controller;
 import com.threatmgmt.dto.ForgotPasswordRequest;
 import com.threatmgmt.dto.ResetPasswordRequest;
 import com.threatmgmt.security.JwtUtil;
+import com.threatmgmt.service.LoginAttemptService;
 import com.threatmgmt.service.PasswordResetService;
 import com.threatmgmt.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,12 +39,16 @@ class PasswordResetControllerTest {
     @Mock
     private PasswordResetService passwordResetService;
 
+    @Mock
+    private LoginAttemptService loginAttemptService;
+
     private AuthController controller;
 
     @BeforeEach
     void setUp() {
         controller = new AuthController(
-                authenticationManager, jwtUtil, userService, passwordEncoder, passwordResetService);
+                authenticationManager, jwtUtil, userService, passwordEncoder,
+                loginAttemptService, passwordResetService);
     }
 
     @Test
