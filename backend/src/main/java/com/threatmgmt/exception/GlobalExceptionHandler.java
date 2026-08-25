@@ -48,7 +48,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(PasswordResetTokenException.class)
     public ResponseEntity<Map<String, Object>> handlePasswordResetToken(PasswordResetTokenException ex) {
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "PASSWORD_RESET_TOKEN_INVALID",
+                "The password reset token is invalid or expired.", null);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
