@@ -17,6 +17,7 @@ public class AuditLogController {
     private final AuditLogService auditLogService;
 
     @GetMapping("/incident/{incidentId}")
+    @PreAuthorize("hasPermission(#incidentId, 'incident', 'read')")
     public ResponseEntity<List<AuditLog>> getLogsForIncident(@PathVariable String incidentId) {
         return ResponseEntity.ok(auditLogService.getLogsForIncident(incidentId));
     }
