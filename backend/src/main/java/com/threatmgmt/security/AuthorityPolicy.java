@@ -36,9 +36,6 @@ public final class AuthorityPolicy {
             normalized.add(ANALYST);
         }
 
-        if (normalized.isEmpty()) {
-            normalized.add(ANALYST);
-        }
         return List.copyOf(normalized);
     }
 
