@@ -97,6 +97,26 @@ public class AttachmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Attachment", "id", id));
     }
 
+    public Attachment getAttachmentByFileName(String fileName) {
+        if (fileName == null || fileName.isBlank()
+                || fileName.contains("..")
+                || fileName.contains("/")
+                || fileName.contains("\\")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence filename is invalid");
+        }
+        return attachmentRepository.findByFileName(fileName)
+                .orElseThrow(() -> new ResourceNotFoundException("Attachment", "fileName", fileName));
+    }
+
+    public Path resolveStoredPath(Attachment attachment) {
+        Path uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
+        Path storedPath = Paths.get(attachment.getStoragePath()).toAbsolutePath().normalize();
+        if (!storedPath.startsWith(uploadRoot)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Evidence file is outside the configured storage root");
+        }
+        return storedPath;
+    }
+
     public void deleteAttachment(String id, String requestingUser, boolean privileged) {
         Attachment attachment = getAttachmentById(id);
         if (!privileged && !requestingUser.equals(attachment.getUploadedBy())) {

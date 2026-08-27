@@ -13,6 +13,12 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+export const resolveApiUrl = (path) => {
+  if (!path) return path;
+  if (/^https?:\\/\\//i.test(path)) return path;
+  return new URL(path, new URL(API_BASE_URL).origin).toString();
+};
+
 const client = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // 30 second timeout to handle backend cold starts & redeployments
@@ -107,6 +113,7 @@ export const attachmentsAPI = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   delete: (id) => client.delete(`/attachments/${id}`),
+  getFileUrl: (fileUrl) => resolveApiUrl(fileUrl),
 };
 
 // ========== Audit Logs API ==========

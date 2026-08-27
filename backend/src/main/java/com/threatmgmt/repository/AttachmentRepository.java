@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface AttachmentRepository extends JpaRepository<Attachment, String> {
     List<Attachment> findByIncidentIdOrderByUploadedAtDesc(String incidentId);
+    java.util.Optional<Attachment> findByFileName(String fileName);
     long countByIncidentId(String incidentId);
 }
