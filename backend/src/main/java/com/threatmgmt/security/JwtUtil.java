@@ -53,9 +53,6 @@ public class JwtUtil {
                     .forEach(normalized::add);
         }
 
-        if (normalized.isEmpty()) {
-            normalized.add("ROLE_ANALYST");
-        }
         if (normalized.contains("ROLE_SUPER_ADMIN")) {
             normalized.add("ROLE_ADMIN");
             normalized.add("ROLE_ANALYST");
