@@ -41,7 +41,7 @@ class JwtUtilTest {
     }
 
     @Test
-    void emptyRolesDefaultToAnalystAuthority() {
-        assertEquals(List.of("ROLE_ANALYST"), jwtUtil.normalizeRoles(List.of()));
+    void emptyRolesProduceNoAuthorities() {
+        assertEquals(List.of(), jwtUtil.normalizeRoles(List.of()));
     }
 }
