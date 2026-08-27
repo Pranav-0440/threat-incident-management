@@ -34,13 +34,12 @@ public class IncidentPermissionEvaluator implements PermissionEvaluator {
                         || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
 
         boolean isAssignedToMe = username.equals(incident.getAssignedTo());
-        boolean isUnassigned   = incident.getAssignedTo() == null || incident.getAssignedTo().isBlank();
         boolean isReporter     = username.equals(incident.getReportedBy());
 
         String permissionStr = permission.toString();
 
         return switch (permissionStr) {
-            case "write" -> isAdmin || isAssignedToMe || isUnassigned;
+            case "write" -> isAdmin || isAssignedToMe || isReporter;
             case "status_update" -> isAdmin || isAssignedToMe || isReporter;
             case "read"  -> isAdmin || isAssignedToMe || isReporter;
             default -> false;
