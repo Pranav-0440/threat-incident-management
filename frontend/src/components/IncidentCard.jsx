@@ -87,8 +87,8 @@ export default function IncidentCard({ incident }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-        <div className="incident-card-actions">
+      <div className="incident-card-aside" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+        <div className="incident-card-risk">
           <span style={{
             fontSize: 'var(--font-size-2xl)',
             fontWeight: 800,
@@ -111,7 +111,7 @@ export default function IncidentCard({ incident }) {
         </div>
 
         {/* Quick Actions Bar */}
-        <div style={{ display: 'flex', gap: '6px', marginTop: '12px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="incident-card-quick-actions" style={{ display: 'flex', gap: '6px', marginTop: '12px' }} onClick={(e) => e.stopPropagation()}>
           <button
             onClick={() => navigate(`/incidents/${incident.id}`)}
             className="btn btn-sm"
