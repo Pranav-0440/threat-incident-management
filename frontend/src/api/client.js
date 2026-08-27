@@ -15,7 +15,7 @@ export const API_BASE_URL = getApiBaseUrl();
 
 export const resolveApiUrl = (path) => {
   if (!path) return path;
-  if (/^https?:\\/\\//i.test(path)) return path;
+  if (/^https?:\/\//i.test(path)) return path;
   return new URL(path, new URL(API_BASE_URL).origin).toString();
 };
 
