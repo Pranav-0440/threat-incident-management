@@ -129,7 +129,8 @@ export function mapIncidentToMitre(incident) {
 }
 
 export function buildMitrePlaybook(incidents) {
-  const target = [...incidents]
+  const safeIncidents = Array.isArray(incidents) ? incidents : [];
+  const target = [...safeIncidents]
     .sort((left, right) => (right.riskScore || 0) - (left.riskScore || 0))[0];
   return target ? mapIncidentToMitre(target) : {
     incidentId: null,
