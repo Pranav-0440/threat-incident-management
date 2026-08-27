@@ -17,8 +17,8 @@ class AuthorityPolicyTest {
     }
 
     @Test
-    void unknownOrEmptyRolesFallBackToAnalyst() {
-        assertEquals(List.of("ROLE_ANALYST"), AuthorityPolicy.normalizeRoles(List.of("ROLE_OWNER", "")));
-        assertEquals(List.of("ROLE_ANALYST"), AuthorityPolicy.normalizeRoles(null));
+    void unknownOrEmptyRolesProduceNoAuthorities() {
+        assertEquals(List.of(), AuthorityPolicy.normalizeRoles(List.of("ROLE_OWNER", "")));
+        assertEquals(List.of(), AuthorityPolicy.normalizeRoles(null));
     }
 }
