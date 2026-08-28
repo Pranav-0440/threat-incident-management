@@ -10,7 +10,9 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 
 @Component
@@ -25,7 +27,7 @@ public class JwtUtil {
     public String generateToken(String username, List<String> roles) {
         return Jwts.builder()
                 .subject(username)
-                .claim("roles", roles)
+                .claim("roles", normalizeRoles(roles))
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getSigningKey())
@@ -39,6 +41,25 @@ public class JwtUtil {
     @SuppressWarnings("unchecked")
     public List<String> extractRoles(String token) {
         return extractClaim(token, claims -> claims.get("roles", List.class));
+    }
+
+    public List<String> normalizeRoles(List<String> roles) {
+        Set<String> normalized = new LinkedHashSet<>();
+        if (roles != null) {
+            roles.stream()
+                    .filter(role -> role != null && !role.isBlank())
+                    .map(role -> role.trim().toUpperCase())
+                    .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
+                    .forEach(normalized::add);
+        }
+
+        if (normalized.contains("ROLE_SUPER_ADMIN")) {
+            normalized.add("ROLE_ADMIN");
+            normalized.add("ROLE_ANALYST");
+        } else if (normalized.contains("ROLE_ADMIN")) {
+            normalized.add("ROLE_ANALYST");
+        }
+        return List.copyOf(normalized);
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
