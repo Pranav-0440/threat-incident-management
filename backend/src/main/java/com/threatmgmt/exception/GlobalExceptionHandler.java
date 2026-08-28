@@ -1,5 +1,6 @@
 package com.threatmgmt.exception;
 
+import org.hibernate.Internal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -10,6 +11,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -45,9 +47,11 @@ public class GlobalExceptionHandler {
         return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
-    @ExceptionHandler({BadCredentialsException.class, org.springframework.security.core.AuthenticationException.class, org.springframework.security.core.userdetails.UsernameNotFoundException.class})
+    @ExceptionHandler({ BadCredentialsException.class, org.springframework.security.core.AuthenticationException.class,
+            org.springframework.security.core.userdetails.UsernameNotFoundException.class })
     public ResponseEntity<Map<String, Object>> handleBadCredentials(Exception ex) {
-        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage() != null ? ex.getMessage() : "Invalid username or password");
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED,
+                ex.getMessage() != null ? ex.getMessage() : "Invalid username or password");
     }
 
     @ExceptionHandler(PasswordResetTokenException.class)
@@ -63,6 +67,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        return buildErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE,
+                "Uploaded file exceeds the maximum allowed limit of 8MB");
     }
 
     @ExceptionHandler(Exception.class)
