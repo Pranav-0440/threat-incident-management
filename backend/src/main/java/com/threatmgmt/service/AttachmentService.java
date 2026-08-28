@@ -43,7 +43,7 @@ public class AttachmentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence file must not be empty");
         }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence file exceeds the 10 MB limit");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence file exceeds the 8 MB limit");
         }
 
         String originalFilename = StringUtils
