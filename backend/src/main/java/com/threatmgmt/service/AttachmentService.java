@@ -63,10 +63,40 @@ public class AttachmentService {
         }
         String storedFileName = UUID.randomUUID().toString() + extension;
 
-        Path targetDir = Paths.get(uploadDir, "incidents", incidentId).toAbsolutePath().normalize();
+    
+        if (incidentId == null || !incidentId.matches("[a-zA-Z0-9_-]+$")) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid incident ID format");
+        }
+
+        Path baseUploadPath = Paths.get(uploadDir)
+                .toAbsolutePath()
+                .normalize();
+
+        Path targetDir = baseUploadPath
+                .resolve(Paths.get("incidents", incidentId))
+                .normalize();
+
+        if (!targetDir.startsWith(baseUploadPath)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid target directory");
+        }
+
         Files.createDirectories(targetDir);
 
-        Path targetLocation = targetDir.resolve(storedFileName);
+        Path targetLocation = targetDir
+                .resolve(storedFileName)
+                .normalize();
+
+        if (!targetLocation.startsWith(targetDir)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid target file path");
+        }
+        
+        
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
         Attachment attachment = Attachment.builder()
