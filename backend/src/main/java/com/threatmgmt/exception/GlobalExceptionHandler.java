@@ -70,7 +70,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<Map<String, Object>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSize() {
         return buildErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE,
                 "Uploaded file exceeds the maximum allowed limit of 8MB");
     }
