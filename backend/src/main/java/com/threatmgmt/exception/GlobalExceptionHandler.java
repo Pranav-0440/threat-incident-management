@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -22,7 +23,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleResourceNotFound(ResourceNotFoundException ex) {
-        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "The requested resource was not found.", null);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -31,61 +32,60 @@ public class GlobalExceptionHandler {
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             fieldErrors.put(error.getField(), error.getDefaultMessage());
         }
-
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now().toString());
-        body.put("status", HttpStatus.BAD_REQUEST.value());
-        body.put("error", "Validation Failed");
-        body.put("fieldErrors", fieldErrors);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "The request contains invalid fields.",
+                Map.of("fieldErrors", fieldErrors));
     }
 
     @ExceptionHandler(InvalidPasswordException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidPassword(InvalidPasswordException ex) {
-        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials.", null);
     }
 
     @ExceptionHandler({BadCredentialsException.class, org.springframework.security.core.AuthenticationException.class, org.springframework.security.core.userdetails.UsernameNotFoundException.class})
     public ResponseEntity<Map<String, Object>> handleBadCredentials(Exception ex) {
-        return buildErrorResponse(HttpStatus.UNAUTHORIZED, ex.getMessage() != null ? ex.getMessage() : "Invalid username or password");
+        return buildErrorResponse(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "Invalid credentials.", null);
     }
 
     @ExceptionHandler(PasswordResetTokenException.class)
     public ResponseEntity<Map<String, Object>> handlePasswordResetToken(PasswordResetTokenException ex) {
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "PASSWORD_RESET_TOKEN_INVALID",
+                "The password reset token is invalid or expired.", null);
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
-        return buildErrorResponse(HttpStatus.FORBIDDEN, "Access denied: insufficient permissions");
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Access denied.", null);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "INVALID_REQUEST", "The request could not be processed.", null);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
-        String correlationId = java.util.UUID.randomUUID().toString();
+        String correlationId = UUID.randomUUID().toString();
         log.error("Unhandled exception; correlationId={}", correlationId, ex);
-        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,
-                "An unexpected error occurred. Reference: " + correlationId, correlationId);
-    }
-
-    private ResponseEntity<Map<String, Object>> buildErrorResponse(HttpStatus status, String message) {
-        return buildErrorResponse(status, message, null);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
+                "An unexpected error occurred. Reference: " + correlationId, correlationId, null);
     }
 
     private ResponseEntity<Map<String, Object>> buildErrorResponse(
-            HttpStatus status, String message, String correlationId) {
+            HttpStatus status, String code, String message, Map<String, Object> extraFields) {
+        return buildErrorResponse(status, code, message, UUID.randomUUID().toString(), extraFields);
+    }
+
+    private ResponseEntity<Map<String, Object>> buildErrorResponse(
+            HttpStatus status, String code, String message, String correlationId, Map<String, Object> extraFields) {
         Map<String, Object> body = new HashMap<>();
         body.put("timestamp", LocalDateTime.now().toString());
         body.put("status", status.value());
         body.put("error", status.getReasonPhrase());
+        body.put("code", code);
         body.put("message", message);
-        if (correlationId != null) {
-            body.put("correlationId", correlationId);
+        body.put("correlationId", correlationId);
+        if (extraFields != null) {
+            body.putAll(extraFields);
         }
         return ResponseEntity.status(status).body(body);
     }
