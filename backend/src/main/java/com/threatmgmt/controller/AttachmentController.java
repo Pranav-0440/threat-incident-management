@@ -25,6 +25,7 @@ public class AttachmentController {
     private final AttachmentService attachmentService;
 
     @PostMapping("/upload/{incidentId}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasPermission(#incidentId, 'incident', 'read')")
     public ResponseEntity<Attachment> upload(
             @PathVariable String incidentId,
             @RequestParam("file") MultipartFile file,
@@ -35,6 +36,7 @@ public class AttachmentController {
     }
 
     @GetMapping("/incident/{incidentId}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasPermission(#incidentId, 'incident', 'read')")
     public ResponseEntity<List<Attachment>> getByIncident(@PathVariable String incidentId) {
         return ResponseEntity.ok(attachmentService.getAttachmentsForIncident(incidentId));
     }
@@ -71,8 +73,11 @@ public class AttachmentController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAttachment(@PathVariable String id) {
-        attachmentService.deleteAttachment(id);
+    public ResponseEntity<Void> deleteAttachment(@PathVariable String id, Authentication authentication) {
+        boolean privileged = authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
+                        || authority.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        attachmentService.deleteAttachment(id, authentication.getName(), privileged);
         return ResponseEntity.noContent().build();
     }
 }

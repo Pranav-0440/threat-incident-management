@@ -5,6 +5,7 @@ import com.threatmgmt.service.CommentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,6 +20,7 @@ public class CommentController {
     private final CommentService commentService;
 
     @PostMapping
+    @PreAuthorize("(hasRole('ANALYST') or hasRole('ADMIN')) and hasPermission(#incidentId, 'incident', 'write')")
     public ResponseEntity<Comment> addComment(
             @PathVariable String incidentId,
             @RequestBody Map<String, String> payload,
@@ -30,16 +32,21 @@ public class CommentController {
     }
 
     @GetMapping
+    @PreAuthorize("hasPermission(#incidentId, 'incident', 'read')")
     public ResponseEntity<List<Comment>> getComments(@PathVariable String incidentId) {
         return ResponseEntity.ok(commentService.getCommentsForIncident(incidentId));
     }
 
     @DeleteMapping("/{commentId}")
+    @PreAuthorize("hasPermission(#incidentId, 'incident', 'read')")
     public ResponseEntity<Void> deleteComment(
             @PathVariable String incidentId,
             @PathVariable String commentId,
             Authentication authentication) {
-        commentService.deleteComment(commentId, authentication.getName());
+        boolean privileged = authentication.getAuthorities().stream()
+                .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
+                        || authority.getAuthority().equals("ROLE_SUPER_ADMIN"));
+        commentService.deleteComment(commentId, authentication.getName(), privileged);
         return ResponseEntity.noContent().build();
     }
 }

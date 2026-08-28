@@ -165,13 +165,13 @@ export default function IncidentsPage() {
 
   return (
     <div className="page-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-6)' }}>
+      <div className="incident-workspace-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-6)' }}>
         <div className="page-header" style={{ marginBottom: 0 }}>
           <h1>SOC Incident Workspace</h1>
           <p>{filtered.length} incident{filtered.length !== 1 ? 's' : ''} active in current view</p>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div className="incident-workspace-actions" style={{ display: 'flex', gap: '10px' }}>
           <button
             className="btn btn-secondary"
             onClick={() => exportIncidentsCSV(filtered)}
@@ -192,6 +192,7 @@ export default function IncidentsPage() {
 
       {/* Workspace Sub-Header Tabs */}
       <div
+        className="workspace-tabs"
         style={{
           display: 'flex',
           gap: '12px',
@@ -226,7 +227,7 @@ export default function IncidentsPage() {
       </div>
 
       {/* Starred Saved Search Presets */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-5)', overflowX: 'auto' }}>
+      <div className="saved-presets" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-5)', overflowX: 'auto' }}>
         <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Star size={14} style={{ color: '#eab308' }} /> Saved Presets:
         </span>

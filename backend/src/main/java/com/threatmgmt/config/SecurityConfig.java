@@ -2,6 +2,8 @@ package com.threatmgmt.config;
 
 import com.threatmgmt.security.IncidentPermissionEvaluator;
 import com.threatmgmt.security.JwtFilter;
+import com.threatmgmt.security.RateLimitFilter;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +33,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    private final RateLimitFilter rateLimitFilter;
     private final JwtFilter jwtFilter;
     private final CorrelationIdFilter correlationIdFilter;
     private final UserService userService;
@@ -64,7 +67,8 @@ public class SecurityConfig {
                 )
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(correlationIdFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rateLimitFilter, JwtFilter.class);
 
         return http.build();
     }

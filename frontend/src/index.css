@@ -1310,6 +1310,8 @@ a:hover {
 
 @media (max-width: 768px) {
   .page-container {
+    min-width: 0;
+    overflow-x: hidden;
     padding: var(--space-4);
     padding-top: calc(70px + var(--space-4));
   }
@@ -1323,13 +1325,90 @@ a:hover {
   }
 
   .incident-card {
-    grid-template-columns: 4px 1fr;
+    grid-template-columns: 4px minmax(0, 1fr);
   }
 
-  .incident-card-actions {
-    flex-direction: row;
-    padding: 0 var(--space-5) var(--space-4);
+  .incident-card-body {
+    min-width: 0;
+    padding: var(--space-4);
+  }
+
+  .incident-card-aside {
+    min-width: 0;
+    align-items: stretch !important;
     grid-column: 2;
+    padding: 0 var(--space-4) var(--space-4);
+  }
+
+  .incident-card-risk {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-start;
+    gap: var(--space-2);
+  }
+
+  .incident-card-quick-actions {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2) !important;
+    margin-top: var(--space-3) !important;
+  }
+
+  .incident-card-quick-actions .btn {
+    min-height: 44px;
+    min-width: 0;
+    padding: var(--space-2) !important;
+    overflow-wrap: anywhere;
+  }
+
+  .incident-card-title,
+  .incident-card-description,
+  .incident-card-meta-item {
+    overflow-wrap: anywhere;
+  }
+
+  .filter-bar,
+  .workspace-tabs,
+  .saved-presets {
+    max-width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: var(--space-2);
+    scrollbar-width: thin;
+  }
+
+  .filter-bar > span {
+    flex: 0 0 70px;
+  }
+
+  .filter-chip {
+    min-height: 44px;
+    flex: 0 0 auto;
+  }
+
+  .workspace-tabs button {
+    min-height: 44px;
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .incident-workspace-header {
+    align-items: stretch !important;
+    flex-direction: column;
+    gap: var(--space-4) !important;
+  }
+
+  .incident-workspace-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .incident-workspace-actions .btn {
+    min-height: 44px;
+    min-width: 0;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
   }
 
   .auth-card {
@@ -1339,6 +1418,11 @@ a:hover {
 }
 
 @media (max-width: 480px) {
+  .page-container {
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+  }
+
   .stats-grid {
     grid-template-columns: 1fr;
   }
