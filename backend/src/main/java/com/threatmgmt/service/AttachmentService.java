@@ -12,7 +12,6 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,7 +26,7 @@ import java.util.UUID;
 @Slf4j
 public class AttachmentService {
 
-    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024;
+    private static final long MAX_FILE_SIZE = 8 * 1024 * 1024;
     private static final java.util.Set<String> ALLOWED_CONTENT_TYPES = java.util.Set.of(
             "application/json", "application/pdf", "image/gif", "image/jpeg", "image/png",
             "image/webp", "text/csv", "text/plain", "application/zip");
@@ -43,10 +42,11 @@ public class AttachmentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence file must not be empty");
         }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence file exceeds the 10 MB limit");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence file exceeds the 8 MB limit");
         }
 
-        String originalFilename = StringUtils.cleanPath(file.getOriginalFilename() != null ? file.getOriginalFilename() : "file");
+        String originalFilename = StringUtils
+                .cleanPath(file.getOriginalFilename() != null ? file.getOriginalFilename() : "file");
         if (originalFilename.isBlank() || originalFilename.equals(".") || originalFilename.equals("..")
                 || originalFilename.contains("..")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence filename is invalid");
@@ -62,10 +62,40 @@ public class AttachmentService {
         }
         String storedFileName = UUID.randomUUID().toString() + extension;
 
-        Path targetDir = Paths.get(uploadDir, "incidents", incidentId).toAbsolutePath().normalize();
+    
+        if (incidentId == null || !incidentId.matches("[a-zA-Z0-9_-]+$")) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid incident ID format");
+        }
+
+        Path baseUploadPath = Paths.get(uploadDir)
+                .toAbsolutePath()
+                .normalize();
+
+        Path targetDir = baseUploadPath
+                .resolve(Paths.get("incidents", incidentId))
+                .normalize();
+
+        if (!targetDir.startsWith(baseUploadPath)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid target directory");
+        }
+
         Files.createDirectories(targetDir);
 
-        Path targetLocation = targetDir.resolve(storedFileName);
+        Path targetLocation = targetDir
+                .resolve(storedFileName)
+                .normalize();
+
+        if (!targetLocation.startsWith(targetDir)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Invalid target file path");
+        }
+        
+
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
 
         Attachment attachment = Attachment.builder()
@@ -100,7 +130,8 @@ public class AttachmentService {
     public void deleteAttachment(String id, String requestingUser, boolean privileged) {
         Attachment attachment = getAttachmentById(id);
         if (!privileged && !requestingUser.equals(attachment.getUploadedBy())) {
-            throw new org.springframework.security.access.AccessDeniedException("Only the uploader or an administrator can delete evidence");
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only the uploader or an administrator can delete evidence");
         }
         try {
             Path path = Paths.get(attachment.getStoragePath());

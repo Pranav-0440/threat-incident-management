@@ -17,7 +17,8 @@ public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
 
-    public AuditLog logEvent(String incidentId, String actorUsername, String actorName, String action, String description, Map<String, Object> details) {
+    public AuditLog logEvent(String incidentId, String actorUsername, String actorName, String action,
+            String description, Map<String, Object> details) {
         AuditLog auditLog = AuditLog.builder()
                 .incidentId(incidentId)
                 .actorUsername(actorUsername != null ? actorUsername : "system")
@@ -27,7 +28,20 @@ public class AuditLogService {
                 .details(details != null ? details.toString() : null)
                 .timestamp(LocalDateTime.now())
                 .build();
-        log.info("Audit log recorded: [{}] {} for incident {}", action, description, incidentId);
+
+        String safeAction = action != null
+                ? action.replaceAll("[\\r\\n]", "_")
+                : "";
+
+        String safeDescription = description != null
+                ? description.replaceAll("[\\r\\n]", "_")
+                : "";
+
+        String safeIncidentId = incidentId != null
+                ? incidentId.replaceAll("[\\r\\n]", "_")
+                : "";
+
+        log.info("Audit log recorded: [{}] {} for incident {}", safeAction, safeDescription, safeIncidentId);
         return auditLogRepository.save(auditLog);
     }
 
