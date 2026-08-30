@@ -2,9 +2,11 @@ package com.threatmgmt.service;
 
 import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Comment;
+import com.threatmgmt.model.Incident;
 import com.threatmgmt.repository.CommentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import com.threatmgmt.repository.IncidentRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,8 +17,16 @@ public class CommentService {
 
     private final CommentRepository commentRepository;
     private final AuditLogService auditLogService;
+    private final IncidentRepository incidentRepository;
+    private final NotificationService notificationService;
 
     public Comment addComment(String incidentId, String authorUsername, String authorFullName, String content) {
+
+        if (content == null || content.isBlank()
+                || !incidentRepository.existsById(incidentId)) {
+            throw new IllegalArgumentException("Invalid comment or incident");
+        }
+
         Comment comment = Comment.builder()
                 .incidentId(incidentId)
                 .authorUsername(authorUsername)
@@ -26,8 +36,15 @@ public class CommentService {
                 .build();
         Comment saved = commentRepository.save(comment);
 
-        auditLogService.logEvent(incidentId, authorUsername, authorFullName, "COMMENT_ADDED",
-                authorFullName + " added a comment to the investigation", null);
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Incident not found"));
+
+        notificationService.sendNotification(
+                incident.getAssignedTo(),
+                "COMMENT_ADDED",
+                "New comment",
+                "A new comment was added to your incident",
+                incidentId);
 
         return saved;
     }
@@ -40,8 +57,17 @@ public class CommentService {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
         if (!privileged && !requestingUser.equals(comment.getAuthorUsername())) {
-            throw new org.springframework.security.access.AccessDeniedException("Only the comment author or an administrator can delete comments");
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "Only the comment author or an administrator can delete comments");
         }
+
+        auditLogService.logEvent(
+                comment.getIncidentId(),
+                requestingUser,
+                requestingUser,
+                "COMMENT_DELETED",
+                "Comment deleted",
+                null);
         commentRepository.delete(comment);
     }
 }
