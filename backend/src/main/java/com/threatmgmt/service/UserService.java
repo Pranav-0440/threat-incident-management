@@ -79,6 +79,7 @@ public class UserService implements UserDetailsService {
         }
 
         String role = isFirstUser ? "SUPER_ADMIN" : requestedRole;
+        
 
         User user = User.builder()
                 .username(request.getUsername())
@@ -88,6 +89,8 @@ public class UserService implements UserDetailsService {
                 .roles(List.of("ROLE_" + role))
                 .createdAt(LocalDateTime.now())
                 .build();
+
+        user.setRoles(List.of("ROLE_" + role));        
 
         User saved = userRepository.save(user);
         log.info("Registered new user: {} with enforced security role: {}", saved.getUsername(), role);
