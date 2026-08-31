@@ -56,15 +56,16 @@ export function AuthProvider({ children }) {
   };
 
   const isAdmin = () => {
-    return user?.roles?.some(
-      (r) => r === "ROLE_ADMIN" || r === "ROLE_SUPER_ADMIN",
+    return Boolean(
+      user?.roles?.includes("ROLE_ADMIN") ||
+      user?.roles?.includes("ROLE_SUPER_ADMIN"),
     );
   };
 
   const isAnalyst = () => {
-    return user?.roles?.some((r) => r === "ROLE_ANALYST");
+    return Boolean(user?.roles?.includes("ROLE_ANALYST"));
   };
-
+  
   const isAuthenticated = () => {
     return !!token && !!user;
   };
