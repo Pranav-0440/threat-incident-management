@@ -5,6 +5,9 @@ import com.threatmgmt.model.Comment;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.repository.CommentRepository;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import com.threatmgmt.repository.IncidentRepository;
 
@@ -63,15 +66,21 @@ public class CommentService {
         public void deleteComment(String commentId, String requestingUser, boolean privileged) {
                 Comment comment = commentRepository.findById(commentId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
-                if (!privileged && !requestingUser.equals(comment.getAuthorUsername())) {
+
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                String actualUser = authentication.getName();
+                boolean isAdmin = authentication.getAuthorities().stream()
+                                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+                if (!isAdmin && !actualUser.equals(comment.getAuthorUsername())) {
                         throw new org.springframework.security.access.AccessDeniedException(
                                         "Only the comment author or an administrator can delete comments");
                 }
 
                 auditLogService.logEvent(
                                 comment.getIncidentId(),
-                                requestingUser,
-                                requestingUser,
+                                actualUser,
+                                actualUser,
                                 "COMMENT_DELETED",
                                 "Comment deleted",
                                 null);
