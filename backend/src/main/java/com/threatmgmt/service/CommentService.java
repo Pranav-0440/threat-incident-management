@@ -22,8 +22,16 @@ public class CommentService {
 
         public Comment addComment(String incidentId, String authorUsername, String authorFullName, String content) {
 
+                if (incidentId == null || incidentId.isBlank()) {
+                        throw new IllegalArgumentException("Incident ID cannot be empty");
+                }
+
                 if (content == null || content.isBlank()) {
                         throw new IllegalArgumentException("Comment content cannot be empty");
+                }
+
+                if (authorUsername == null || authorUsername.isBlank()) {
+                        throw new IllegalArgumentException("Author username cannot be empty");
                 }
 
                 Incident incident = incidentRepository.findById(incidentId)
