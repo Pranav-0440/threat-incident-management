@@ -28,6 +28,9 @@ public class CommentController {
             @RequestBody Map<String, String> payload,
             Authentication authentication) {
         String content = payload.get("content");
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException("Comment content cannot be empty");
+        }
         String username = authentication.getName();
         return ResponseEntity.status(201)
                 .body(commentService.addComment(incidentId, username, username, content));
