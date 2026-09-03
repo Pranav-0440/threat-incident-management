@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { incidentsAPI } from '../api/client';
 import RiskGauge from '../components/RiskGauge';
 import PriorityBadge from '../components/PriorityBadge';
-import { Send, CheckCircle, Bot, Sparkles } from 'lucide-react';
+import { Send, CheckCircle, Bot, Sparkles, AlertCircle } from 'lucide-react';
 
 const SEVERITIES = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const CATEGORIES = ['SUSPICIOUS_ACTIVITY', 'THREAT', 'WORKPLACE_VIOLENCE', 'CYBER_THREAT', 'PHYSICAL_SECURITY'];
@@ -21,15 +21,31 @@ export default function CreateIncidentPage() {
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [isWakingUp, setIsWakingUp] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [success, setSuccess] = useState(false);
   const [aiSuggesting, setAiSuggesting] = useState(false);
   const [aiReasoning, setAiReasoning] = useState('');
+
+  const coldStartTimerRef = useRef(null);
+
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (coldStartTimerRef.current) {
+        clearTimeout(coldStartTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    if (submitError) {
+      setSubmitError('');
     }
   };
 
@@ -107,20 +123,46 @@ export default function CreateIncidentPage() {
     if (!validate()) return;
 
     setLoading(true);
+    setSubmitError('');
+    setIsWakingUp(false);
+
+    if (coldStartTimerRef.current) {
+      clearTimeout(coldStartTimerRef.current);
+    }
+
+    // Show cold-start message if submission takes ~4.5 seconds
+    coldStartTimerRef.current = setTimeout(() => {
+      setIsWakingUp(true);
+    }, 4500);
+
     try {
       await incidentsAPI.create(formData);
+      if (coldStartTimerRef.current) {
+        clearTimeout(coldStartTimerRef.current);
+      }
+      setIsWakingUp(false);
       setSuccess(true);
       setTimeout(() => {
         navigate('/incidents');
       }, 1500);
     } catch (err) {
       console.error('Failed to create incident:', err);
+      if (coldStartTimerRef.current) {
+        clearTimeout(coldStartTimerRef.current);
+      }
+      setIsWakingUp(false);
+
       const fieldErrors = err.response?.data?.fieldErrors;
       if (fieldErrors) {
         setErrors(fieldErrors);
       }
+      setSubmitError('Unable to submit the incident right now. Please try again.');
     } finally {
+      if (coldStartTimerRef.current) {
+        clearTimeout(coldStartTimerRef.current);
+      }
       setLoading(false);
+      setIsWakingUp(false);
     }
   };
 
@@ -165,6 +207,60 @@ export default function CreateIncidentPage() {
         <div style={{ padding: '12px 16px', backgroundColor: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)', borderRadius: '8px', marginBottom: '20px', fontSize: '0.875rem', color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Bot size={18} style={{ color: '#818cf8' }} />
           {aiReasoning}
+        </div>
+      )}
+
+      {loading && isWakingUp && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            padding: '14px 18px',
+            backgroundColor: 'rgba(6, 182, 212, 0.12)',
+            border: '1px solid rgba(6, 182, 212, 0.3)',
+            borderRadius: 'var(--radius-lg, 14px)',
+            marginBottom: '20px',
+            fontSize: 'var(--font-size-sm, 0.875rem)',
+            color: '#e2e8f0',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            boxShadow: '0 4px 12px rgba(6, 182, 212, 0.1)'
+          }}
+        >
+          <div className="spinner" style={{ width: 18, height: 18, borderWidth: 2, borderColor: 'rgba(6, 182, 212, 0.3)', borderTopColor: '#06b6d4', flexShrink: 0 }} />
+          <div>
+            <span style={{ fontWeight: 600, color: '#22d3ee' }}>Connecting to backend services, please wait...</span>
+            <span style={{ marginLeft: '8px', color: '#94a3b8', fontSize: '0.8125rem' }}>
+              The server is waking up. Please wait rather than clicking Submit again.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {submitError && (
+        <div
+          role="alert"
+          style={{
+            padding: '14px 18px',
+            backgroundColor: 'var(--color-critical-bg, rgba(239, 68, 68, 0.12))',
+            border: '1px solid var(--color-critical-border, rgba(239, 68, 68, 0.3))',
+            borderRadius: 'var(--radius-lg, 14px)',
+            marginBottom: '20px',
+            fontSize: 'var(--font-size-sm, 0.875rem)',
+            color: '#fca5a5',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}
+        >
+          <AlertCircle size={20} style={{ color: 'var(--color-critical, #ef4444)', flexShrink: 0 }} />
+          <div style={{ flex: 1 }}>
+            <span style={{ fontWeight: 600, color: '#fca5a5' }}>{submitError}</span>
+            <span style={{ marginLeft: '8px', color: '#cbd5e1', fontSize: '0.8125rem' }}>
+              Your form data has been preserved.
+            </span>
+          </div>
         </div>
       )}
 
