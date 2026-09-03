@@ -31,6 +31,9 @@ public class IncidentService {
     @Autowired(required = false)
     private IncidentSearchRepository searchRepo;
 
+    @Autowired(required = false)
+    private ElasticsearchSyncService elasticsearchSyncService;
+
     public Incident createIncident(Incident incident) {
         incident.setCreatedAt(LocalDateTime.now());
         incident.setStatus("OPEN");
@@ -302,11 +305,15 @@ public class IncidentService {
         auditLogService.logEvent(id, deletedBy, deletedBy, "INCIDENT_DELETED",
                 "Incident deleted by " + deletedBy + ": " + incident.getTitle(), null);
         incidentRepo.deleteById(id);
-        if (searchRepo != null) {
+        if (searchRepo != null || elasticsearchSyncService != null) {
             try {
-                searchRepo.deleteById(id);
+                if (elasticsearchSyncService != null) {
+                    elasticsearchSyncService.deleteById(id);
+                } else {
+                    searchRepo.deleteById(id);
+                }
             } catch (Exception e) {
-                log.warn("Failed to delete incident from Elasticsearch: {}", e.getMessage());
+                log.warn("Failed to delete incident {} from Elasticsearch after retries: {}", id, e.getMessage());
             }
         }
     }
