@@ -40,10 +40,8 @@ spring:
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       ssl:
-        enabled: ${REDIS_SSL:true}
+        enabled: ${REDIS_SSL:false}
       timeout: 5000
-  cache:
-    type: redis
   servlet:
     multipart:
       max-file-size: 8MB
