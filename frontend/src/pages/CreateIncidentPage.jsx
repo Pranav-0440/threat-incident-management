@@ -59,7 +59,10 @@ export default function CreateIncidentPage() {
     if (formData.category === 'WORKPLACE_VIOLENCE') score += 30;
     else if (formData.category === 'CYBER_THREAT') score += 25;
     else if (formData.category === 'THREAT') score += 20;
-    else if (formData.category === 'SUSPICIOUS_ACTIVITY') score += 15;
+    else if (
+    formData.category === 'SUSPICIOUS_ACTIVITY' ||
+    formData.category === 'PHYSICAL_SECURITY'
+    ) score += 15;
 
     return Math.min(score, 100);
   };
