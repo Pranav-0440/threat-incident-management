@@ -6,7 +6,7 @@ import IncidentCard from '../components/IncidentCard';
 import SearchBar from '../components/SearchBar';
 import { exportIncidentsCSV } from '../utils/exportUtils';
 import { subscribeToIncidentUpdates } from '../utils/incidentCollaboration';
-import { PlusCircle, AlertTriangle, Download, Star } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Download, Star, Filter, RotateCcw } from 'lucide-react';
 
 const SEVERITY_FILTERS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const PRIORITY_FILTERS = ['ALL', 'P1', 'P2', 'P3', 'P4'];
@@ -22,31 +22,61 @@ export default function IncidentsPage() {
   const [workspaceTab, setWorkspaceTab] = useState('ALL'); // ALL, ASSIGNED_TO_ME, REPORTED_BY_ME, RESOLVED
 
   // Filter States
-  const [severityFilter, setSeverityFilter] = useState('ALL');
-  const [priorityFilter, setPriorityFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [severityFilters, setSeverityFilters] = useState([]);
+  const [priorityFilters, setPriorityFilters] = useState([]);
+  const [statusFilters, setStatusFilters] = useState([]);
+  const [categoryFilters, setCategoryFilters] = useState([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchIncidents = async () => {
+      setLoading(true);
       try {
-        const res = await incidentsAPI.getAll();
+        const normalizedQuery = searchQuery.trim().toLowerCase();
+        const serverQuery = normalizedQuery.includes(':') || normalizedQuery === 'today'
+          ? ''
+          : searchQuery;
+        const res = await incidentsAPI.getFiltered({
+          query: serverQuery,
+          severities: severityFilters,
+          priorities: priorityFilters,
+          statuses: statusFilters,
+          categories: categoryFilters,
+          startDate,
+          endDate,
+        });
         const sorted = (res.data || []).sort(
           (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
         );
         setIncidents(sorted);
       } catch (err) {
-        console.error('Failed to fetch incidents:', err);
+        console.error('Failed to fetch filtered incidents:', err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchIncidents();
-  }, []);
+  }, [searchQuery, severityFilters, priorityFilters, statusFilters, categoryFilters, startDate, endDate]);
+
+  const resetFilters = () => {
+    setSeverityFilters([]);
+    setPriorityFilters([]);
+    setStatusFilters([]);
+    setCategoryFilters([]);
+    setStartDate('');
+    setEndDate('');
+    setSearchQuery('');
+    setWorkspaceTab('ALL');
+  };
+
+  const updateMultiSelect = (event, setter) => {
+    setter(Array.from(event.target.selectedOptions, (option) => option.value));
+  };
 
   useEffect(() => subscribeToIncidentUpdates(token, (event) => {
     if (event.eventType !== 'INCIDENT_STATUS_CHANGED') return;
@@ -58,14 +88,10 @@ export default function IncidentsPage() {
   }), [token]);
 
   const handleApplyPreset = (presetName) => {
-    setSeverityFilter('ALL');
-    setPriorityFilter('ALL');
-    setStatusFilter('ALL');
-    setCategoryFilter('ALL');
-    setSearchQuery('');
+    resetFilters();
 
     if (presetName === 'P1_CRITICAL') {
-      setPriorityFilter('P1');
+      setPriorityFilters(['P1']);
     } else if (presetName === 'ASSIGNED_ME') {
       setWorkspaceTab('ASSIGNED_TO_ME');
     } else if (presetName === 'HIGH_RISK') {
@@ -85,11 +111,11 @@ export default function IncidentsPage() {
       if (i.status !== 'RESOLVED' && i.status !== 'CLOSED') return false;
     }
 
-    // 2. Chip Filters
-    const matchesSeverity = severityFilter === 'ALL' || i.severity === severityFilter;
-    const matchesPriority = priorityFilter === 'ALL' || (i.priority || 'P3') === priorityFilter;
-    const matchesStatus = statusFilter === 'ALL' || i.status === statusFilter;
-    const matchesCategory = categoryFilter === 'ALL' || i.category === categoryFilter;
+    // 2. Multi-select Filters (also protects the view if the API returns stale data)
+    const matchesSeverity = severityFilters.length === 0 || severityFilters.includes(i.severity);
+    const matchesPriority = priorityFilters.length === 0 || priorityFilters.includes(i.priority || 'P3');
+    const matchesStatus = statusFilters.length === 0 || statusFilters.includes(i.status);
+    const matchesCategory = categoryFilters.length === 0 || categoryFilters.includes(i.category);
 
     // 3. Search Query
     let matchesSearch = true;
@@ -97,16 +123,14 @@ export default function IncidentsPage() {
       const q = searchQuery.toLowerCase();
 
       if (q === 'risk:high') {
-        return i.riskScore >= 70;
-      }
-
-      if (q === 'today') {
+        matchesSearch = i.riskScore >= 70;
+      } else if (q === 'today') {
         const todayStr = new Date().toISOString().slice(0, 10);
         const incDateStr = i.createdAt ? new Date(i.createdAt).toISOString().slice(0, 10) : '';
-        return incDateStr === todayStr;
+        matchesSearch = incDateStr === todayStr;
       }
 
-      if (q.includes(':')) {
+      else if (q.includes(':')) {
         const parts = q.split(' ');
         matchesSearch = parts.every(part => {
           if (part.startsWith('severity:')) {
@@ -152,6 +176,27 @@ export default function IncidentsPage() {
   const handleSearch = useCallback((query) => {
     setSearchQuery(query);
   }, []);
+
+  const renderMultiSelect = (label, id, value, setter, options) => (
+    <label className="incident-filter-field" htmlFor={id}>
+      <span>{label}</span>
+      <select
+        id={id}
+        className="form-select incident-multi-select"
+        multiple
+        value={value}
+        onChange={(event) => updateMultiSelect(event, setter)}
+        aria-label={`Filter by ${label}`}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option.replace(/_/g, ' ')}
+          </option>
+        ))}
+      </select>
+      <small>Use Ctrl/Cmd-click to select multiple values.</small>
+    </label>
+  );
 
   if (loading) {
     return (
@@ -266,89 +311,57 @@ export default function IncidentsPage() {
         <SearchBar onSearch={handleSearch} placeholder="Search by text or syntax (e.g. severity:critical status:open category:threat)..." />
       </div>
 
-      {/* Filter Toolbar */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: 'var(--space-6)' }}>
-        <div className="filter-bar">
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: '70px' }}>
-            Priority:
-          </span>
-          {PRIORITY_FILTERS.map(f => (
-            <button
-              key={f}
-              className={`filter-chip ${priorityFilter === f ? 'active' : ''}`}
-              onClick={() => setPriorityFilter(f)}
-            >
-              {f}
+      <div className="incident-filter-layout">
+        <aside className="incident-filter-sidebar" aria-label="Advanced incident filters">
+          <div className="incident-filter-sidebar-header">
+            <div>
+              <Filter size={16} />
+              <h2>Advanced filters</h2>
+            </div>
+            <button className="btn btn-ghost btn-sm" type="button" onClick={resetFilters}>
+              <RotateCcw size={14} /> Clear
             </button>
-          ))}
-        </div>
-
-        <div className="filter-bar">
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: '70px' }}>
-            Severity:
-          </span>
-          {SEVERITY_FILTERS.map(f => (
-            <button
-              key={f}
-              className={`filter-chip ${severityFilter === f ? 'active' : ''}`}
-              onClick={() => setSeverityFilter(f)}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-
-        <div className="filter-bar">
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: '70px' }}>
-            Status:
-          </span>
-          {STATUS_FILTERS.map(f => (
-            <button
-              key={f}
-              className={`filter-chip ${statusFilter === f ? 'active' : ''}`}
-              onClick={() => setStatusFilter(f)}
-            >
-              {f.replace('_', ' ')}
-            </button>
-          ))}
-        </div>
-
-        <div className="filter-bar">
-          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: '70px' }}>
-            Category:
-          </span>
-          {CATEGORY_FILTERS.map(f => (
-            <button
-              key={f}
-              className={`filter-chip ${categoryFilter === f ? 'active' : ''}`}
-              onClick={() => setCategoryFilter(f)}
-            >
-              {f.replace(/_/g, ' ')}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Incident List */}
-      {filtered.length > 0 ? (
-        <div className="incident-list stagger">
-          {filtered.map((incident) => (
-            <IncidentCard key={incident.id} incident={incident} />
-          ))}
-        </div>
-      ) : (
-        <div className="empty-state">
-          <div className="empty-state-icon">
-            <AlertTriangle size={48} />
           </div>
-          <h3>No incidents found</h3>
-          <p>
-            {searchQuery || severityFilter !== 'ALL' || statusFilter !== 'ALL' || priorityFilter !== 'ALL' || categoryFilter !== 'ALL'
-              ? 'Try adjusting your filters or search query.'
-              : 'No incidents match your current view. Click "Report Incident" to log one.'}
-          </p>
-        </div>
-      )}
+          <p className="incident-filter-help">Combine multiple values and date bounds to narrow the incident workspace.</p>
+          {renderMultiSelect('Severity', 'severity-filter', severityFilters, setSeverityFilters, SEVERITY_FILTERS.slice(1))}
+          {renderMultiSelect('Status', 'status-filter', statusFilters, setStatusFilters, STATUS_FILTERS.slice(1))}
+          {renderMultiSelect('Category', 'category-filter', categoryFilters, setCategoryFilters, CATEGORY_FILTERS.slice(1))}
+          {renderMultiSelect('Priority', 'priority-filter', priorityFilters, setPriorityFilters, PRIORITY_FILTERS.slice(1))}
+          <div className="incident-filter-date-grid">
+            <label className="incident-filter-field" htmlFor="start-date-filter">
+              <span>Start date</span>
+              <input id="start-date-filter" className="form-input" type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+            </label>
+            <label className="incident-filter-field" htmlFor="end-date-filter">
+              <span>End date</span>
+              <input id="end-date-filter" className="form-input" type="date" value={endDate} min={startDate || undefined} onChange={(event) => setEndDate(event.target.value)} />
+            </label>
+          </div>
+        </aside>
+
+        <section className="incident-results" aria-label="Filtered incidents">
+          {/* Incident List */}
+          {filtered.length > 0 ? (
+            <div className="incident-list stagger">
+              {filtered.map((incident) => (
+                <IncidentCard key={incident.id} incident={incident} />
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <div className="empty-state-icon">
+                <AlertTriangle size={48} />
+              </div>
+              <h3>No incidents found</h3>
+              <p>
+                {searchQuery || severityFilters.length > 0 || statusFilters.length > 0 || priorityFilters.length > 0 || categoryFilters.length > 0 || startDate || endDate
+                  ? 'Try adjusting your filters or search query.'
+                  : 'No incidents match your current view. Click "Report Incident" to log one.'}
+              </p>
+            </div>
+          )}
+        </section>
+      </div>
     </div>
   );
 }

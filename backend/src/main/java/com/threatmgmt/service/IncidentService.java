@@ -4,6 +4,7 @@ import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.repository.IncidentRepository;
+import com.threatmgmt.repository.IncidentSpecifications;
 import com.threatmgmt.repository.IncidentSearchRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,9 +14,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Service
@@ -98,16 +102,55 @@ public class IncidentService {
                 PageRequest.of(boundedPage, boundedSize, sort));
     }
 
-    private String normalizeTextFilter(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
+    public List<Incident> filterIncidents(
+            String username,
+            boolean privileged,
+            String query,
+            Collection<String> severities,
+            Collection<String> statuses,
+            Collection<String> categories,
+            Collection<String> priorities,
+            LocalDate startDate,
+            LocalDate endDate) {
+        if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("startDate must not be after endDate");
         }
-        return value.trim();
+
+        return incidentRepo.findAll(
+                IncidentSpecifications.matching(
+                        username,
+                        privileged,
+                        normalizeTextFilter(query),
+                        normalizeValues(severities),
+                        normalizeValues(statuses),
+                        normalizeValues(categories),
+                        normalizeValues(priorities),
+                        startDate,
+                        endDate),
+                Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
+    }
+
+    private String normalizeTextFilter(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private String normalizeUpperFilter(String value) {
         String normalized = normalizeTextFilter(value);
-        return normalized == null ? null : normalized.toUpperCase(java.util.Locale.ROOT);
+        return normalized == null ? null : normalized.toUpperCase(Locale.ROOT);
+    }
+
+    private List<String> normalizeValues(Collection<String> values) {
+        if (values == null) {
+            return List.of();
+        }
+        return values.stream()
+                .filter(value -> value != null && !value.isBlank())
+                .flatMap(value -> List.of(value.split(",")).stream())
+                .map(String::trim)
+                .filter(value -> !value.isEmpty())
+                .map(value -> value.toUpperCase(Locale.ROOT))
+                .distinct()
+                .toList();
     }
 
     public Incident findById(String id) {
