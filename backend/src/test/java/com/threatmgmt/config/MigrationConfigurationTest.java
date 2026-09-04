@@ -22,7 +22,7 @@ class MigrationConfigurationTest {
         assertTrue(migration.contains("CREATE TABLE IF NOT EXISTS incidents"));
         assertTrue(migration.contains("CREATE TABLE IF NOT EXISTS audit_logs"));
 
-        String migrationV2 = readResource("db/migration/V2__create_password_reset_tokens.sql");
+        String migrationV2 = readResource("db/migration/V2__password_reset_tokens.sql");
         assertTrue(migrationV2.contains("CREATE TABLE IF NOT EXISTS password_reset_tokens"));
         assertTrue(migrationV2.contains("idx_password_reset_token_hash"));
     }
