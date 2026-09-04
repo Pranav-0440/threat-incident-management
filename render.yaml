@@ -5,6 +5,8 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free
     region: singapore
+    branch: main
+    autoDeploy: true
     envVars:
       - key: PORT
         value: 8080
