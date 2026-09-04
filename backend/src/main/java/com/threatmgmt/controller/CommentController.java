@@ -2,7 +2,8 @@ package com.threatmgmt.controller;
 
 import com.threatmgmt.model.Comment;
 import com.threatmgmt.service.CommentService;
-import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import org.springframework.validation.annotation.Validated;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,6 +16,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/incidents/{incidentId}/comments")
 @RequiredArgsConstructor
+@Validated
 public class CommentController {
 
     private final CommentService commentService;
@@ -22,10 +24,13 @@ public class CommentController {
     @PostMapping
     @PreAuthorize("(hasRole('ANALYST') or hasRole('ADMIN')) and hasPermission(#incidentId, 'incident', 'write')")
     public ResponseEntity<Comment> addComment(
-            @PathVariable String incidentId,
+            @PathVariable @NotBlank String incidentId,
             @RequestBody Map<String, String> payload,
             Authentication authentication) {
         String content = payload.get("content");
+        if (content == null || content.isBlank()) {
+            throw new IllegalArgumentException("Comment content cannot be empty");
+        }
         String username = authentication.getName();
         return ResponseEntity.status(201)
                 .body(commentService.addComment(incidentId, username, username, content));
