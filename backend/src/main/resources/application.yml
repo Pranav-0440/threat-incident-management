@@ -19,6 +19,9 @@ spring:
       max-lifetime: 60000
       connection-timeout: 20000
       connection-test-query: SELECT 1
+      data-source-properties:
+        prepareThreshold: 0
+        preparedStatementCacheQueries: 0
   jpa:
     hibernate:
       ddl-auto: validate
