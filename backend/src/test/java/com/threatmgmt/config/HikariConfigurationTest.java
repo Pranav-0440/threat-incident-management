@@ -17,6 +17,8 @@ class HikariConfigurationTest {
 
         assertThat(configuration)
                 .contains("hikari:")
-                .contains("connection-test-query: SELECT 1");
+                .contains("connection-test-query: SELECT 1")
+                .contains("keepalive-time: 30000")
+                .contains("initialization-fail-timeout: 60000");
     }
 }
