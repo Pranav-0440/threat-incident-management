@@ -7,7 +7,7 @@ export default function UserManagementPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState(null);
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, isSuperAdmin } = useAuth();
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -111,6 +111,9 @@ export default function UserManagementPage() {
           <div className="stat-card-value">
             {users.filter(u => u.roles?.some(r => r.includes('ADMIN'))).length}
           </div>
+          <div style={{ fontSize: '11px', color: '#a855f7', marginTop: '4px' }}>
+            {users.filter(u => u.roles?.some(r => r.includes('SUPER_ADMIN'))).length} Super Admins
+          </div>
         </div>
       </div>
 
@@ -135,8 +138,10 @@ export default function UserManagementPage() {
               </tr>
             ) : (
               users.map((u) => {
-                const isAdminUser = u.roles?.some(r => r.includes('ADMIN'));
+                const isSuperAdminUser = Boolean(u.roles?.some(r => r.includes('SUPER_ADMIN')));
+                const isAdminUser = Boolean(u.roles?.some(r => r === 'ROLE_ADMIN' || r === 'ADMIN'));
                 const isSelf = currentUser?.username === u.username;
+                const canModify = !isSelf && (!isSuperAdminUser || isSuperAdmin?.());
 
                 return (
                   <tr key={u.id} style={{ borderBottom: '1px solid var(--color-border)', transition: 'background-color 0.2s ease' }}>
@@ -147,8 +152,16 @@ export default function UserManagementPage() {
                             width: '36px',
                             height: '36px',
                             borderRadius: '50%',
-                            backgroundColor: isAdminUser ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-                            color: isAdminUser ? '#ef4444' : '#3b82f6',
+                            backgroundColor: isSuperAdminUser
+                              ? 'rgba(168, 85, 247, 0.2)'
+                              : isAdminUser
+                              ? 'rgba(239, 68, 68, 0.2)'
+                              : 'rgba(59, 130, 246, 0.2)',
+                            color: isSuperAdminUser
+                              ? '#c084fc'
+                              : isAdminUser
+                              ? '#ef4444'
+                              : '#3b82f6',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -173,12 +186,24 @@ export default function UserManagementPage() {
                           borderRadius: '9999px',
                           fontSize: '11px',
                           fontWeight: 700,
-                          backgroundColor: isAdminUser ? 'rgba(239, 68, 68, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                          color: isAdminUser ? '#ef4444' : '#60a5fa',
-                          border: isAdminUser ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)'
+                          backgroundColor: isSuperAdminUser
+                            ? 'rgba(168, 85, 247, 0.15)'
+                            : isAdminUser
+                            ? 'rgba(239, 68, 68, 0.15)'
+                            : 'rgba(59, 130, 246, 0.15)',
+                          color: isSuperAdminUser
+                            ? '#c084fc'
+                            : isAdminUser
+                            ? '#ef4444'
+                            : '#60a5fa',
+                          border: isSuperAdminUser
+                            ? '1px solid rgba(168, 85, 247, 0.4)'
+                            : isAdminUser
+                            ? '1px solid rgba(239, 68, 68, 0.3)'
+                            : '1px solid rgba(59, 130, 246, 0.3)'
                         }}
                       >
-                        {isAdminUser ? 'ADMINISTRATOR' : 'SOC ANALYST'}
+                        {isSuperAdminUser ? 'SUPER ADMINISTRATOR' : (isAdminUser ? 'ADMINISTRATOR' : 'SOC ANALYST')}
                       </span>
                     </td>
                     <td style={{ padding: '16px', fontSize: '13px', color: '#cbd5e1' }}>
@@ -201,10 +226,20 @@ export default function UserManagementPage() {
                       <button
                         className="btn btn-secondary btn-sm"
                         onClick={() => handleRoleToggle(u)}
-                        disabled={updatingId === u.id || isSelf}
-                        title={isSelf ? 'Cannot change own role' : 'Toggle between Analyst & Admin'}
+                        disabled={updatingId === u.id || !canModify || isSuperAdminUser}
+                        title={
+                          isSelf
+                            ? 'Cannot change own role'
+                            : isSuperAdminUser
+                            ? 'Super Administrator accounts are system protected'
+                            : 'Toggle between Analyst & Admin'
+                        }
                       >
-                        {updatingId === u.id ? 'Updating...' : `Switch to ${isAdminUser ? 'Analyst' : 'Admin'}`}
+                        {updatingId === u.id
+                          ? 'Updating...'
+                          : isSuperAdminUser
+                          ? 'Protected Role'
+                          : `Switch to ${isAdminUser ? 'Analyst' : 'Admin'}`}
                       </button>
                     </td>
                   </tr>
