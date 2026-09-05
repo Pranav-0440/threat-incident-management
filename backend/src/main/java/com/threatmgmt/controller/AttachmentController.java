@@ -1,6 +1,7 @@
 package com.threatmgmt.controller;
 
 import com.threatmgmt.model.Attachment;
+import com.threatmgmt.security.IncidentPermissionEvaluator;
 import com.threatmgmt.service.AttachmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.Resource;
@@ -23,6 +24,7 @@ import java.util.List;
 public class AttachmentController {
 
     private final AttachmentService attachmentService;
+    private final IncidentPermissionEvaluator incidentPermissionEvaluator;
 
     @PostMapping("/upload/{incidentId}")
     @org.springframework.security.access.prepost.PreAuthorize("hasPermission(#incidentId, 'incident', 'read')")
@@ -42,31 +44,30 @@ public class AttachmentController {
     }
 
     @GetMapping("/files/{fileName}")
-    public ResponseEntity<Resource> downloadFile(@PathVariable String fileName) {
+    public ResponseEntity<Resource> downloadFile(
+            @PathVariable String fileName,
+            Authentication authentication) {
+        Attachment attachment = attachmentService.getAttachmentByFileName(fileName);
+        if (!incidentPermissionEvaluator.hasPermission(authentication, attachment.getIncidentId(), "read")) {
+            throw new org.springframework.security.access.AccessDeniedException(
+                    "You do not have permission to read this incident evidence");
+        }
+
         try {
-            Attachment attachment = attachmentService.getAttachmentsForIncident("")
-                    .stream()
-                    .filter(a -> a.getFileName().equals(fileName))
-                    .findFirst()
-                    .orElse(null);
-
-            Path filePath;
-            if (attachment != null) {
-                filePath = Paths.get(attachment.getStoragePath());
-            } else {
-                filePath = Paths.get("uploads").resolve(fileName).toAbsolutePath();
-            }
-
+            Path filePath = attachmentService.resolveStoredPath(attachment);
             Resource resource = new UrlResource(filePath.toUri());
-            if (resource.exists() || resource.isReadable()) {
-                String contentType = attachment != null ? attachment.getFileType() : "application/octet-stream";
-                return ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(contentType))
-                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + (attachment != null ? attachment.getOriginalName() : fileName) + "\"")
-                        .body(resource);
-            } else {
+            if (!resource.exists() || !resource.isReadable()) {
                 return ResponseEntity.notFound().build();
             }
+
+            String contentType = attachment.getFileType() != null
+                    ? attachment.getFileType()
+                    : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "inline; filename=\"" + attachment.getOriginalName() + "\"")
+                    .body(resource);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
