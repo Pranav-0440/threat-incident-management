@@ -79,7 +79,7 @@ class IncidentControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ANALYST")
+    @WithMockUser(username = "analystA", roles = "ANALYST")
     void getAll_returnsList() throws Exception {
         Incident incident1 = Incident.builder()
                 .id("1").title("Incident 1").description("Test 1")
@@ -88,7 +88,7 @@ class IncidentControllerTest {
                 .id("2").title("Incident 2").description("Test 2")
                 .severity("HIGH").status("INVESTIGATING").build();
 
-        when(incidentService.getAll()).thenReturn(List.of(incident1, incident2));
+        when(incidentService.getAll("analystA", false)).thenReturn(List.of(incident1, incident2));
 
         mockMvc.perform(get("/api/v1/incidents"))
                 .andExpect(status().isOk())
@@ -96,7 +96,7 @@ class IncidentControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ANALYST")
+    @WithMockUser(username = "analystA", roles = "ANALYST")
     void getById_returnsIncident() throws Exception {
         Incident incident = Incident.builder()
                 .id("test-id-1")
@@ -106,7 +106,7 @@ class IncidentControllerTest {
                 .status("OPEN")
                 .build();
 
-        when(incidentService.findById("test-id-1")).thenReturn(incident);
+        when(incidentService.findById("test-id-1", "analystA", false)).thenReturn(incident);
 
         mockMvc.perform(get("/api/v1/incidents/test-id-1"))
                 .andExpect(status().isOk())
@@ -115,18 +115,28 @@ class IncidentControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "ANALYST")
+    @WithMockUser(username = "analystA", roles = "ANALYST")
     void search_returnsResults() throws Exception {
         IncidentSearchDoc doc = new IncidentSearchDoc();
         doc.setId("1");
         doc.setTitle("Suspicious activity");
         doc.setDescription("Detected near building");
 
-        when(incidentService.searchIncidents("suspicious")).thenReturn(List.of(doc));
+        when(incidentService.searchIncidents("suspicious", "analystA", false)).thenReturn(List.of(doc));
 
         mockMvc.perform(get("/api/v1/incidents/search").param("q", "suspicious"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "analystA", roles = "ANALYST")
+    void getAll_forwardsCallerScope() throws Exception {
+        when(incidentService.getAll("analystA", false)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/incidents"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test

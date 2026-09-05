@@ -61,6 +61,10 @@ public class IncidentService {
         return incidentRepo.findAll();
     }
 
+    public List<Incident> getAll(String username, boolean privileged) {
+        return privileged ? incidentRepo.findAll() : incidentRepo.findByAssignedToOrReportedBy(username, username);
+    }
+
     public Page<Incident> getPage(String username,
                                   boolean privileged,
                                   int page,
@@ -115,16 +119,40 @@ public class IncidentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Incident", "id", id));
     }
 
+    public Incident findById(String id, String username, boolean privileged) {
+        Incident incident = findById(id);
+        if (!privileged && !isReadableBy(incident, username)) {
+            throw new ResourceNotFoundException("Incident", "id", id);
+        }
+        return incident;
+    }
+
     public List<Incident> findBySeverity(String severity) {
         return incidentRepo.findBySeverity(severity);
+    }
+
+    public List<Incident> findBySeverity(String severity, String username, boolean privileged) {
+        return getAll(username, privileged).stream()
+                .filter(incident -> severity.equalsIgnoreCase(incident.getSeverity()))
+                .toList();
     }
 
     public List<Incident> findByStatus(String status) {
         return incidentRepo.findByStatus(status);
     }
 
+    public List<Incident> findByStatus(String status, String username, boolean privileged) {
+        return getAll(username, privileged).stream()
+                .filter(incident -> status.equalsIgnoreCase(incident.getStatus()))
+                .toList();
+    }
+
     public List<IncidentSearchDoc> searchIncidents(String query) {
-        if (searchRepo != null) {
+        return searchIncidents(query, null, true);
+    }
+
+    public List<IncidentSearchDoc> searchIncidents(String query, String username, boolean privileged) {
+        if (privileged && searchRepo != null) {
             try {
                 List<IncidentSearchDoc> docs = searchRepo.findByTitleContainingOrDescriptionContaining(query, query);
                 if (docs != null && !docs.isEmpty()) {
@@ -136,8 +164,13 @@ public class IncidentService {
         }
         List<Incident> results = incidentRepo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(query, query);
         return results.stream()
+                .filter(incident -> privileged || isReadableBy(incident, username))
                 .map(this::mapToSearchDoc)
                 .toList();
+    }
+
+    private boolean isReadableBy(Incident incident, String username) {
+        return username != null && (username.equals(incident.getReportedBy()) || username.equals(incident.getAssignedTo()));
     }
 
     public Map<String, Object> getStats(String username, boolean privileged) {
@@ -254,9 +287,17 @@ public class IncidentService {
 
     public List<Incident> getRelatedIncidents(String incidentId) {
         Incident current = findById(incidentId);
-        List<Incident> all = incidentRepo.findAll();
-        return all.stream()
-                .filter(i -> !i.getId().equals(incidentId))
+        return findRelatedIncidents(current, incidentRepo.findAll());
+    }
+
+    public List<Incident> getRelatedIncidents(String incidentId, String username, boolean privileged) {
+        Incident current = findById(incidentId, username, privileged);
+        return findRelatedIncidents(current, getAll(username, privileged));
+    }
+
+    private List<Incident> findRelatedIncidents(Incident current, List<Incident> candidates) {
+        return candidates.stream()
+                .filter(i -> !i.getId().equals(current.getId()))
                 .filter(i -> (current.getCategory() != null && current.getCategory().equalsIgnoreCase(i.getCategory())) ||
                              (current.getSeverity() != null && current.getSeverity().equalsIgnoreCase(i.getSeverity())) ||
                              (current.getLocation() != null && current.getLocation().equalsIgnoreCase(i.getLocation())))
