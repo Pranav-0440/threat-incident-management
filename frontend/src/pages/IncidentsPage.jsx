@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { incidentsAPI } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import IncidentCard from '../components/IncidentCard';
 import SearchBar from '../components/SearchBar';
 import { exportIncidentsCSV } from '../utils/exportUtils';
 import { subscribeToIncidentUpdates } from '../utils/incidentCollaboration';
-import { PlusCircle, AlertTriangle, Download, Star } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Download, Star, X } from 'lucide-react';
 
 const SEVERITY_FILTERS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const PRIORITY_FILTERS = ['ALL', 'P1', 'P2', 'P3', 'P4'];
@@ -18,16 +18,16 @@ export default function IncidentsPage() {
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Workspace Tabs
-  const [workspaceTab, setWorkspaceTab] = useState('ALL'); // ALL, ASSIGNED_TO_ME, REPORTED_BY_ME, RESOLVED
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [workspaceTab, setWorkspaceTab] = useState(() => searchParams.get('tab') || 'ALL');
 
   // Filter States
   const [severityFilter, setSeverityFilter] = useState('ALL');
-  const [priorityFilter, setPriorityFilter] = useState('ALL');
+  const [priorityFilter, setPriorityFilter] = useState(() => searchParams.get('priority') || 'ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [presetFilter, setPresetFilter] = useState('NONE');
+  const [presetFilter, setPresetFilter] = useState(() => searchParams.get('preset') || 'NONE');
   const [today] = useState(() => new Date().toISOString().slice(0, 10));
 
   const navigate = useNavigate();
@@ -59,16 +59,48 @@ export default function IncidentsPage() {
     )));
   }), [token]);
 
+  const updateUrlParams = (updates) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(updates).forEach(([key, val]) => {
+        if (!val || val === 'ALL' || val === 'NONE') {
+          next.delete(key);
+        } else {
+          next.set(key, val);
+        }
+      });
+      return next;
+    }, { replace: true });
+  };
+
+  const handleWorkspaceTabChange = (tabId) => {
+    setWorkspaceTab(tabId);
+    updateUrlParams({ tab: tabId });
+  };
+
   const handleApplyPreset = (presetName) => {
     if (presetName === 'P1_CRITICAL') {
-      setPriorityFilter('P1');
+      const next = priorityFilter === 'P1' ? 'ALL' : 'P1';
+      setPriorityFilter(next);
+      updateUrlParams({ priority: next, preset: next === 'P1' ? 'P1_CRITICAL' : 'NONE' });
     } else if (presetName === 'ASSIGNED_ME') {
-      setWorkspaceTab('ASSIGNED_TO_ME');
+      const next = workspaceTab === 'ASSIGNED_TO_ME' ? 'ALL' : 'ASSIGNED_TO_ME';
+      handleWorkspaceTabChange(next);
     } else if (presetName === 'HIGH_RISK') {
-      setPresetFilter('HIGH_RISK');
+      const next = presetFilter === 'HIGH_RISK' ? 'NONE' : 'HIGH_RISK';
+      setPresetFilter(next);
+      updateUrlParams({ preset: next });
     } else if (presetName === 'TODAY') {
-      setPresetFilter('TODAY');
+      const next = presetFilter === 'TODAY' ? 'NONE' : 'TODAY';
+      setPresetFilter(next);
+      updateUrlParams({ preset: next });
     }
+  };
+
+  const clearActivePreset = () => {
+    setPresetFilter('NONE');
+    setPriorityFilter('ALL');
+    updateUrlParams({ preset: 'NONE', priority: 'ALL' });
   };
 
   const filtered = incidents.filter(i => {
@@ -207,7 +239,7 @@ export default function IncidentsPage() {
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setWorkspaceTab(tab.id)}
+            onClick={() => handleWorkspaceTabChange(tab.id)}
             style={{
               padding: '10px 16px',
               background: 'none',
@@ -225,38 +257,84 @@ export default function IncidentsPage() {
       </div>
 
       {/* Starred Saved Search Presets */}
-      <div className="saved-presets" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-5)', overflowX: 'auto' }}>
+      <div className="saved-presets" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-4)', overflowX: 'auto', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Star size={14} style={{ color: '#eab308' }} /> Saved Presets:
         </span>
         <button
           className="btn btn-secondary btn-sm"
           onClick={() => handleApplyPreset('P1_CRITICAL')}
-          style={{ fontSize: '11px', padding: '4px 10px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 10px',
+            background: priorityFilter === 'P1' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.1)',
+            color: '#ef4444',
+            border: priorityFilter === 'P1' ? '1px solid #ef4444' : '1px solid rgba(239, 68, 68, 0.3)',
+            boxShadow: priorityFilter === 'P1' ? '0 0 8px rgba(239, 68, 68, 0.4)' : 'none'
+          }}
         >
-          ★ P1 Critical Incidents
+          ★ P1 Critical {priorityFilter === 'P1' ? '✓' : ''}
         </button>
         <button
           className="btn btn-secondary btn-sm"
           onClick={() => handleApplyPreset('ASSIGNED_ME')}
-          style={{ fontSize: '11px', padding: '4px 10px', background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)' }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 10px',
+            background: workspaceTab === 'ASSIGNED_TO_ME' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.1)',
+            color: '#818cf8',
+            border: workspaceTab === 'ASSIGNED_TO_ME' ? '1px solid #818cf8' : '1px solid rgba(99, 102, 241, 0.3)',
+            boxShadow: workspaceTab === 'ASSIGNED_TO_ME' ? '0 0 8px rgba(99, 102, 241, 0.4)' : 'none'
+          }}
         >
-          ★ Assigned To Me
+          ★ Assigned To Me {workspaceTab === 'ASSIGNED_TO_ME' ? '✓' : ''}
         </button>
         <button
           className="btn btn-secondary btn-sm"
           onClick={() => handleApplyPreset('HIGH_RISK')}
-          style={{ fontSize: '11px', padding: '4px 10px', background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: '1px solid rgba(249, 115, 22, 0.3)' }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 10px',
+            background: presetFilter === 'HIGH_RISK' ? 'rgba(249, 115, 22, 0.25)' : 'rgba(249, 115, 22, 0.1)',
+            color: '#f97316',
+            border: presetFilter === 'HIGH_RISK' ? '1px solid #f97316' : '1px solid rgba(249, 115, 22, 0.3)',
+            boxShadow: presetFilter === 'HIGH_RISK' ? '0 0 8px rgba(249, 115, 22, 0.4)' : 'none'
+          }}
         >
-          ★ High Risk (&ge;70)
+          ★ High Risk (&ge;70) {presetFilter === 'HIGH_RISK' ? '✓' : ''}
         </button>
         <button
           className="btn btn-secondary btn-sm"
           onClick={() => handleApplyPreset('TODAY')}
-          style={{ fontSize: '11px', padding: '4px 10px' }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 10px',
+            background: presetFilter === 'TODAY' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+            color: presetFilter === 'TODAY' ? '#10b981' : 'inherit',
+            border: presetFilter === 'TODAY' ? '1px solid #10b981' : '1px solid var(--color-border)',
+            boxShadow: presetFilter === 'TODAY' ? '0 0 8px rgba(16, 185, 129, 0.4)' : 'none'
+          }}
         >
-          ★ Today's Incidents
+          ★ Today's Incidents {presetFilter === 'TODAY' ? '✓' : ''}
         </button>
+
+        {(presetFilter !== 'NONE' || priorityFilter !== 'ALL') && (
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={clearActivePreset}
+            style={{
+              fontSize: '11px',
+              padding: '3px 8px',
+              marginLeft: 'auto',
+              color: '#94a3b8',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <X size={12} /> Clear Preset ({filtered.length} matching)
+          </button>
+        )}
       </div>
 
       {/* Search & Syntax support */}
