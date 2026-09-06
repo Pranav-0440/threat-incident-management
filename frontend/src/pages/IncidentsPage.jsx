@@ -16,6 +16,7 @@ const CATEGORY_FILTERS = ['ALL', 'WORKPLACE_VIOLENCE', 'THREAT', 'SUSPICIOUS_ACT
 export default function IncidentsPage() {
   const { user, token } = useAuth();
   const [incidents, setIncidents] = useState([]);
+  const [pageInfo, setPageInfo] = useState({ page: 0, size: 10, totalElements: 0, totalPages: 0, first: true, last: true });
   const [loading, setLoading] = useState(true);
 
   // Workspace Tabs
@@ -32,21 +33,46 @@ export default function IncidentsPage() {
 
   useEffect(() => {
     const fetchIncidents = async () => {
+      setLoading(true);
       try {
-        const res = await incidentsAPI.getAll();
-        const sorted = (res.data || []).sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        setIncidents(sorted);
+        const params = {
+          page: pageInfo.page,
+          size: pageInfo.size,
+          sortBy: 'createdAt',
+          direction: 'desc',
+        };
+        if (searchQuery.trim() && !searchQuery.includes(':')) params.query = searchQuery.trim();
+        if (severityFilter !== 'ALL') params.severity = severityFilter;
+        if (statusFilter !== 'ALL') params.status = statusFilter;
+        if (categoryFilter !== 'ALL') params.category = categoryFilter;
+        if (priorityFilter !== 'ALL') params.priority = priorityFilter;
+
+        const res = await incidentsAPI.getPage(params);
+        const data = res.data || {};
+        setIncidents(data.content || []);
+        setPageInfo((current) => ({
+          ...current,
+          page: data.page ?? current.page,
+          size: data.size ?? current.size,
+          totalElements: data.totalElements ?? 0,
+          totalPages: data.totalPages ?? 0,
+          first: data.first ?? true,
+          last: data.last ?? true,
+        }));
       } catch (err) {
         console.error('Failed to fetch incidents:', err);
+        setIncidents([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchIncidents();
-  }, []);
+  }, [pageInfo.page, pageInfo.size, searchQuery, severityFilter, statusFilter, categoryFilter, priorityFilter]);
+
+  const goToPage = (nextPage) => {
+    setPageInfo((current) => ({ ...current, page: nextPage }));
+  };
 
   useEffect(() => subscribeToIncidentUpdates(token, (event) => {
     if (event.eventType !== 'INCIDENT_STATUS_CHANGED') return;
@@ -151,6 +177,7 @@ export default function IncidentsPage() {
 
   const handleSearch = useCallback((query) => {
     setSearchQuery(query);
+    setPageInfo((current) => ({ ...current, page: 0 }));
   }, []);
 
   if (loading) {
@@ -276,7 +303,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${priorityFilter === f ? 'active' : ''}`}
-              onClick={() => setPriorityFilter(f)}
+              onClick={() => { setPriorityFilter(f); setPageInfo((current) => ({ ...current, page: 0 })); }}
             >
               {f}
             </button>
@@ -291,7 +318,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${severityFilter === f ? 'active' : ''}`}
-              onClick={() => setSeverityFilter(f)}
+              onClick={() => { setSeverityFilter(f); setPageInfo((current) => ({ ...current, page: 0 })); }}
             >
               {f}
             </button>
@@ -306,7 +333,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${statusFilter === f ? 'active' : ''}`}
-              onClick={() => setStatusFilter(f)}
+              onClick={() => { setStatusFilter(f); setPageInfo((current) => ({ ...current, page: 0 })); }}
             >
               {f.replace('_', ' ')}
             </button>
@@ -321,7 +348,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${categoryFilter === f ? 'active' : ''}`}
-              onClick={() => setCategoryFilter(f)}
+              onClick={() => { setCategoryFilter(f); setPageInfo((current) => ({ ...current, page: 0 })); }}
             >
               {f.replace(/_/g, ' ')}
             </button>
@@ -349,6 +376,33 @@ export default function IncidentsPage() {
           </p>
         </div>
       )}
+
+      <div className="incident-pagination" aria-label="Incident list pagination">
+        <span>
+          Showing {incidents.length} of {pageInfo.totalElements} incident{pageInfo.totalElements === 1 ? '' : 's'}
+        </span>
+        <div className="incident-pagination-controls">
+          <button
+            className="btn btn-secondary btn-sm"
+            type="button"
+            onClick={() => goToPage(Math.max(pageInfo.page - 1, 0))}
+            disabled={pageInfo.first || loading}
+          >
+            Previous
+          </button>
+          <span aria-live="polite">
+            Page {pageInfo.totalPages > 0 ? pageInfo.page + 1 : 0} of {pageInfo.totalPages}
+          </span>
+          <button
+            className="btn btn-secondary btn-sm"
+            type="button"
+            onClick={() => goToPage(pageInfo.page + 1)}
+            disabled={pageInfo.last || loading}
+          >
+            Next
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
