@@ -15,6 +15,70 @@ const STATUS_FILTERS = ['ALL', 'OPEN', 'INVESTIGATING', 'WAITING_EVIDENCE', 'RES
 const CATEGORY_FILTERS = ['ALL', 'WORKPLACE_VIOLENCE', 'THREAT', 'SUSPICIOUS_ACTIVITY', 'CYBER_THREAT', 'PHYSICAL_SECURITY'];
 const PAGE_SIZE = 20;
 
+function buildIncidentQueryParams({
+  page,
+  pageSize,
+  searchQuery,
+  severityFilter,
+  priorityFilter,
+  statusFilter,
+  categoryFilter,
+  workspaceTab,
+  username,
+}) {
+  const params = {
+    page,
+    size: pageSize,
+    sortBy: 'createdAt',
+    direction: 'desc',
+  };
+
+  const query = searchQuery?.trim();
+  if (query) {
+    params.q = query;
+  }
+
+  if (severityFilter !== 'ALL') {
+    params.severity = severityFilter;
+  }
+
+  if (priorityFilter !== 'ALL') {
+    params.priority = priorityFilter;
+  }
+
+  if (statusFilter !== 'ALL') {
+    params.status = statusFilter;
+  } else if (workspaceTab === 'RESOLVED') {
+    params.status = 'RESOLVED';
+  }
+
+  if (categoryFilter !== 'ALL') {
+    params.category = categoryFilter;
+  }
+
+  const isUserWorkspaceTab = workspaceTab === 'ASSIGNED_TO_ME' || workspaceTab === 'REPORTED_BY_ME';
+  if (isUserWorkspaceTab && username && !params.q) {
+    params.q = username;
+  }
+
+  return params;
+}
+
+function parseIncidentPageResponse(pageData, pageSize) {
+  let items = [];
+  if (Array.isArray(pageData?.content)) {
+    items = pageData.content;
+  } else if (Array.isArray(pageData)) {
+    items = pageData;
+  }
+
+  const totalElements = pageData?.totalElements ?? items.length;
+  const computedPages = Math.ceil(totalElements / pageSize) || 1;
+  const totalPages = pageData?.totalPages ?? computedPages;
+
+  return { items, totalElements, totalPages };
+}
+
 export default function IncidentsPage() {
   const { user, token } = useAuth();
   const [incidents, setIncidents] = useState([]);
@@ -45,64 +109,27 @@ export default function IncidentsPage() {
     const fetchIncidents = async () => {
       setFetching(true);
       try {
-        const params = {
+        const params = buildIncidentQueryParams({
           page,
-          size: PAGE_SIZE,
-          sortBy: 'createdAt',
-          direction: 'desc',
-        };
-
-        if (searchQuery && searchQuery.trim()) {
-          params.q = searchQuery.trim();
-        }
-
-        if (severityFilter && severityFilter !== 'ALL') {
-          params.severity = severityFilter;
-        }
-
-        if (priorityFilter && priorityFilter !== 'ALL') {
-          params.priority = priorityFilter;
-        }
-
-        if (statusFilter && statusFilter !== 'ALL') {
-          params.status = statusFilter;
-        } else if (workspaceTab === 'RESOLVED') {
-          params.status = 'RESOLVED';
-        }
-
-        if (categoryFilter && categoryFilter !== 'ALL') {
-          params.category = categoryFilter;
-        }
-
-        if (workspaceTab === 'ASSIGNED_TO_ME' && user?.username && !params.q) {
-          params.q = user.username;
-        } else if (workspaceTab === 'REPORTED_BY_ME' && user?.username && !params.q) {
-          params.q = user.username;
-        }
+          pageSize: PAGE_SIZE,
+          searchQuery,
+          severityFilter,
+          priorityFilter,
+          statusFilter,
+          categoryFilter,
+          workspaceTab,
+          username: user?.username,
+        });
 
         const res = await incidentsAPI.getPage(params, { signal: controller.signal });
         if (isCurrent && res.data) {
-          const pageData = res.data;
-          const items = Array.isArray(pageData.content)
-            ? pageData.content
-            : Array.isArray(pageData)
-            ? pageData
-            : [];
+          const { items, totalElements: total, totalPages: pages } = parseIncidentPageResponse(res.data, PAGE_SIZE);
           setIncidents(items);
-          setTotalElements(
-            pageData.totalElements !== undefined
-              ? pageData.totalElements
-              : items.length
-          );
-          setTotalPages(
-            pageData.totalPages !== undefined
-              ? pageData.totalPages
-              : Math.ceil((pageData.totalElements || items.length) / PAGE_SIZE) || 1
-          );
+          setTotalElements(total);
+          setTotalPages(pages);
         }
       } catch (err) {
         if (axios.isCancel?.(err) || err.name === 'CanceledError' || err.name === 'AbortError') {
-          // Ignore aborted requests to prevent race condition overwrites
           return;
         }
         if (isCurrent) {
@@ -126,11 +153,12 @@ export default function IncidentsPage() {
 
   useEffect(() => subscribeToIncidentUpdates(token, (event) => {
     if (event.eventType !== 'INCIDENT_STATUS_CHANGED') return;
-    setIncidents((current) => current.map((incident) => (
-      incident.id === event.incidentId
-        ? { ...incident, status: event.status, updatedAt: event.occurredAt }
-        : incident
-    )));
+    setIncidents((current) => current.map((incident) => {
+      if (incident.id === event.incidentId) {
+        return { ...incident, status: event.status, updatedAt: event.occurredAt };
+      }
+      return incident;
+    }));
   }), [token]);
 
   const handleApplyPreset = (presetName) => {
