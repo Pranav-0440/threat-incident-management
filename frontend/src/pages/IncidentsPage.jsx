@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { incidentsAPI } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import IncidentCard from '../components/IncidentCard';
@@ -12,11 +13,82 @@ const SEVERITY_FILTERS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const PRIORITY_FILTERS = ['ALL', 'P1', 'P2', 'P3', 'P4'];
 const STATUS_FILTERS = ['ALL', 'OPEN', 'INVESTIGATING', 'WAITING_EVIDENCE', 'RESOLVED', 'CLOSED'];
 const CATEGORY_FILTERS = ['ALL', 'WORKPLACE_VIOLENCE', 'THREAT', 'SUSPICIOUS_ACTIVITY', 'CYBER_THREAT', 'PHYSICAL_SECURITY'];
+const PAGE_SIZE = 20;
+
+function buildIncidentQueryParams({
+  page,
+  pageSize,
+  searchQuery,
+  severityFilter,
+  priorityFilter,
+  statusFilter,
+  categoryFilter,
+  workspaceTab,
+  username,
+}) {
+  const params = {
+    page,
+    size: pageSize,
+    sortBy: 'createdAt',
+    direction: 'desc',
+  };
+
+  const query = searchQuery?.trim();
+  if (query) {
+    params.q = query;
+  }
+
+  if (severityFilter !== 'ALL') {
+    params.severity = severityFilter;
+  }
+
+  if (priorityFilter !== 'ALL') {
+    params.priority = priorityFilter;
+  }
+
+  if (statusFilter !== 'ALL') {
+    params.status = statusFilter;
+  } else if (workspaceTab === 'RESOLVED') {
+    params.status = 'RESOLVED';
+  }
+
+  if (categoryFilter !== 'ALL') {
+    params.category = categoryFilter;
+  }
+
+  const isUserWorkspaceTab = workspaceTab === 'ASSIGNED_TO_ME' || workspaceTab === 'REPORTED_BY_ME';
+  if (isUserWorkspaceTab && username && !params.q) {
+    params.q = username;
+  }
+
+  return params;
+}
+
+function parseIncidentPageResponse(pageData, pageSize) {
+  let items = [];
+  if (Array.isArray(pageData?.content)) {
+    items = pageData.content;
+  } else if (Array.isArray(pageData)) {
+    items = pageData;
+  }
+
+  const totalElements = pageData?.totalElements ?? items.length;
+  const computedPages = Math.ceil(totalElements / pageSize) || 1;
+  const totalPages = pageData?.totalPages ?? computedPages;
+
+  return { items, totalElements, totalPages };
+}
 
 export default function IncidentsPage() {
   const { user, token } = useAuth();
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(false);
+
+  // Pagination State (zero-based)
+  const [page, setPage] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   // Workspace Tabs
   const [workspaceTab, setWorkspaceTab] = useState('ALL'); // ALL, ASSIGNED_TO_ME, REPORTED_BY_ME, RESOLVED
@@ -31,30 +103,62 @@ export default function IncidentsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const controller = new AbortController();
+    let isCurrent = true;
+
     const fetchIncidents = async () => {
+      setFetching(true);
       try {
-        const res = await incidentsAPI.getAll();
-        const sorted = (res.data || []).sort(
-          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-        );
-        setIncidents(sorted);
+        const params = buildIncidentQueryParams({
+          page,
+          pageSize: PAGE_SIZE,
+          searchQuery,
+          severityFilter,
+          priorityFilter,
+          statusFilter,
+          categoryFilter,
+          workspaceTab,
+          username: user?.username,
+        });
+
+        const res = await incidentsAPI.getPage(params, { signal: controller.signal });
+        if (isCurrent && res.data) {
+          const { items, totalElements: total, totalPages: pages } = parseIncidentPageResponse(res.data, PAGE_SIZE);
+          setIncidents(items);
+          setTotalElements(total);
+          setTotalPages(pages);
+        }
       } catch (err) {
-        console.error('Failed to fetch incidents:', err);
+        if (axios.isCancel?.(err) || err.name === 'CanceledError' || err.name === 'AbortError') {
+          return;
+        }
+        if (isCurrent) {
+          console.error('Failed to fetch incidents:', err);
+        }
       } finally {
-        setLoading(false);
+        if (isCurrent) {
+          setLoading(false);
+          setFetching(false);
+        }
       }
     };
 
     fetchIncidents();
-  }, []);
+
+    return () => {
+      isCurrent = false;
+      controller.abort();
+    };
+  }, [page, severityFilter, priorityFilter, statusFilter, categoryFilter, searchQuery, workspaceTab, user]);
 
   useEffect(() => subscribeToIncidentUpdates(token, (event) => {
     if (event.eventType !== 'INCIDENT_STATUS_CHANGED') return;
-    setIncidents((current) => current.map((incident) => (
-      incident.id === event.incidentId
-        ? { ...incident, status: event.status, updatedAt: event.occurredAt }
-        : incident
-    )));
+    setIncidents((current) => current.map((incident) => {
+      if (incident.id === event.incidentId) {
+        return { ...incident, status: event.status, updatedAt: event.occurredAt };
+      }
+      return incident;
+    }));
   }), [token]);
 
   const handleApplyPreset = (presetName) => {
@@ -63,6 +167,8 @@ export default function IncidentsPage() {
     setStatusFilter('ALL');
     setCategoryFilter('ALL');
     setSearchQuery('');
+    setWorkspaceTab('ALL');
+    setPage(0);
 
     if (presetName === 'P1_CRITICAL') {
       setPriorityFilter('P1');
@@ -75,82 +181,19 @@ export default function IncidentsPage() {
     }
   };
 
-  const filtered = incidents.filter(i => {
-    // 1. Workspace Tab Filter
-    if (workspaceTab === 'ASSIGNED_TO_ME' && user) {
-      if (i.assignedTo !== user.username) return false;
-    } else if (workspaceTab === 'REPORTED_BY_ME' && user) {
-      if (i.reportedBy !== user.username) return false;
-    } else if (workspaceTab === 'RESOLVED') {
-      if (i.status !== 'RESOLVED' && i.status !== 'CLOSED') return false;
-    }
+  const handleFilterChange = (setter, val) => {
+    setter(val);
+    setPage(0);
+  };
 
-    // 2. Chip Filters
-    const matchesSeverity = severityFilter === 'ALL' || i.severity === severityFilter;
-    const matchesPriority = priorityFilter === 'ALL' || (i.priority || 'P3') === priorityFilter;
-    const matchesStatus = statusFilter === 'ALL' || i.status === statusFilter;
-    const matchesCategory = categoryFilter === 'ALL' || i.category === categoryFilter;
-
-    // 3. Search Query
-    let matchesSearch = true;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-
-      if (q === 'risk:high') {
-        return i.riskScore >= 70;
-      }
-
-      if (q === 'today') {
-        const todayStr = new Date().toISOString().slice(0, 10);
-        const incDateStr = i.createdAt ? new Date(i.createdAt).toISOString().slice(0, 10) : '';
-        return incDateStr === todayStr;
-      }
-
-      if (q.includes(':')) {
-        const parts = q.split(' ');
-        matchesSearch = parts.every(part => {
-          if (part.startsWith('severity:')) {
-            const val = part.split(':')[1];
-            return i.severity?.toLowerCase() === val;
-          }
-          if (part.startsWith('status:')) {
-            const val = part.split(':')[1];
-            return i.status?.toLowerCase() === val;
-          }
-          if (part.startsWith('priority:')) {
-            const val = part.split(':')[1];
-            return (i.priority || 'p3').toLowerCase() === val;
-          }
-          if (part.startsWith('category:')) {
-            const val = part.split(':')[1];
-            return i.category?.toLowerCase().includes(val);
-          }
-          if (part.startsWith('assigned:')) {
-            const val = part.split(':')[1];
-            return i.assignedTo?.toLowerCase().includes(val);
-          }
-          return (
-            i.title?.toLowerCase().includes(part) ||
-            i.description?.toLowerCase().includes(part) ||
-            i.location?.toLowerCase().includes(part)
-          );
-        });
-      } else {
-        matchesSearch = (
-          i.title?.toLowerCase().includes(q) ||
-          i.description?.toLowerCase().includes(q) ||
-          i.location?.toLowerCase().includes(q) ||
-          i.reportedBy?.toLowerCase().includes(q) ||
-          i.assignedTo?.toLowerCase().includes(q)
-        );
-      }
-    }
-
-    return matchesSeverity && matchesPriority && matchesStatus && matchesCategory && matchesSearch;
-  });
+  const handleWorkspaceTabChange = (tabId) => {
+    setWorkspaceTab(tabId);
+    setPage(0);
+  };
 
   const handleSearch = useCallback((query) => {
     setSearchQuery(query);
+    setPage(0);
   }, []);
 
   if (loading) {
@@ -168,14 +211,14 @@ export default function IncidentsPage() {
       <div className="incident-workspace-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-6)' }}>
         <div className="page-header" style={{ marginBottom: 0 }}>
           <h1>SOC Incident Workspace</h1>
-          <p>{filtered.length} incident{filtered.length !== 1 ? 's' : ''} active in current view</p>
+          <p>{totalElements} incident{totalElements !== 1 ? 's' : ''} active in current view</p>
         </div>
 
         <div className="incident-workspace-actions" style={{ display: 'flex', gap: '10px' }}>
           <button
             className="btn btn-secondary"
-            onClick={() => exportIncidentsCSV(filtered)}
-            title="Export filtered list as CSV"
+            onClick={() => exportIncidentsCSV(incidents)}
+            title="Export current page list as CSV"
           >
             <Download size={16} /> Export CSV
           </button>
@@ -198,18 +241,19 @@ export default function IncidentsPage() {
           gap: '12px',
           borderBottom: '1px solid var(--color-border)',
           marginBottom: 'var(--space-5)',
-          paddingBottom: '2px'
+          paddingBottom: '2px',
+          overflowX: 'auto'
         }}
       >
         {[
-          { id: 'ALL', label: `All Incidents (${incidents.length})` },
-          { id: 'ASSIGNED_TO_ME', label: `Assigned to Me (${incidents.filter(i => user && i.assignedTo === user.username).length})` },
-          { id: 'REPORTED_BY_ME', label: `Reported by Me (${incidents.filter(i => user && i.reportedBy === user.username).length})` },
-          { id: 'RESOLVED', label: `Resolved / Closed (${incidents.filter(i => i.status === 'RESOLVED' || i.status === 'CLOSED').length})` }
+          { id: 'ALL', label: 'All Incidents' },
+          { id: 'ASSIGNED_TO_ME', label: 'Assigned to Me' },
+          { id: 'REPORTED_BY_ME', label: 'Reported by Me' },
+          { id: 'RESOLVED', label: 'Resolved / Closed' }
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setWorkspaceTab(tab.id)}
+            onClick={() => handleWorkspaceTabChange(tab.id)}
             style={{
               padding: '10px 16px',
               background: 'none',
@@ -218,7 +262,8 @@ export default function IncidentsPage() {
               color: workspaceTab === tab.id ? '#60a5fa' : '#94a3b8',
               fontWeight: workspaceTab === tab.id ? 700 : 500,
               fontSize: '14px',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              whiteSpace: 'nowrap'
             }}
           >
             {tab.label}
@@ -276,7 +321,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${priorityFilter === f ? 'active' : ''}`}
-              onClick={() => setPriorityFilter(f)}
+              onClick={() => handleFilterChange(setPriorityFilter, f)}
             >
               {f}
             </button>
@@ -291,7 +336,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${severityFilter === f ? 'active' : ''}`}
-              onClick={() => setSeverityFilter(f)}
+              onClick={() => handleFilterChange(setSeverityFilter, f)}
             >
               {f}
             </button>
@@ -306,7 +351,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${statusFilter === f ? 'active' : ''}`}
-              onClick={() => setStatusFilter(f)}
+              onClick={() => handleFilterChange(setStatusFilter, f)}
             >
               {f.replace('_', ' ')}
             </button>
@@ -321,7 +366,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${categoryFilter === f ? 'active' : ''}`}
-              onClick={() => setCategoryFilter(f)}
+              onClick={() => handleFilterChange(setCategoryFilter, f)}
             >
               {f.replace(/_/g, ' ')}
             </button>
@@ -330,9 +375,15 @@ export default function IncidentsPage() {
       </div>
 
       {/* Incident List */}
-      {filtered.length > 0 ? (
-        <div className="incident-list stagger">
-          {filtered.map((incident) => (
+      {incidents.length > 0 ? (
+        <div
+          className="incident-list stagger"
+          style={{
+            opacity: fetching ? 0.6 : 1,
+            transition: 'opacity 0.2s ease',
+          }}
+        >
+          {incidents.map((incident) => (
             <IncidentCard key={incident.id} incident={incident} />
           ))}
         </div>
@@ -343,10 +394,53 @@ export default function IncidentsPage() {
           </div>
           <h3>No incidents found</h3>
           <p>
-            {searchQuery || severityFilter !== 'ALL' || statusFilter !== 'ALL' || priorityFilter !== 'ALL' || categoryFilter !== 'ALL'
+            {searchQuery || severityFilter !== 'ALL' || statusFilter !== 'ALL' || priorityFilter !== 'ALL' || categoryFilter !== 'ALL' || workspaceTab !== 'ALL'
               ? 'Try adjusting your filters or search query.'
               : 'No incidents match your current view. Click "Report Incident" to log one.'}
           </p>
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div
+          className="pagination-controls"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '16px',
+            marginTop: 'var(--space-8)',
+            paddingTop: 'var(--space-6)',
+            borderTop: '1px solid var(--color-border)',
+          }}
+        >
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setPage((prev) => Math.max(prev - 1, 0))}
+            disabled={page === 0 || fetching}
+            id="pagination-prev-btn"
+          >
+            &larr; Previous
+          </button>
+          <span
+            style={{
+              fontSize: 'var(--font-size-sm)',
+              color: 'var(--color-text-secondary)',
+              fontWeight: 500,
+            }}
+          >
+            Page <strong style={{ color: 'var(--color-text-primary)' }}>{page + 1}</strong> of{' '}
+            <strong style={{ color: 'var(--color-text-primary)' }}>{totalPages}</strong>
+          </span>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setPage((prev) => Math.min(prev + 1, totalPages - 1))}
+            disabled={page >= totalPages - 1 || fetching}
+            id="pagination-next-btn"
+          >
+            Next &rarr;
+          </button>
         </div>
       )}
     </div>
