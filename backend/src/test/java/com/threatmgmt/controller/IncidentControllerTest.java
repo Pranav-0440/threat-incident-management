@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -96,6 +98,44 @@ class IncidentControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "analystA", roles = "ANALYST")
+    void filter_acceptsMultiSelectsAndDateRange() throws Exception {
+        Incident incident = Incident.builder()
+                .id("filtered-1").title("Door incident").description("Test")
+                .severity("HIGH").status("OPEN").category("THREAT").priority("P1").build();
+        when(incidentService.filterIncidents(
+                eq("analystA"), eq(false), eq("door"),
+                eq(List.of("HIGH", "CRITICAL")),
+                eq(List.of("OPEN", "INVESTIGATING")),
+                eq(List.of("THREAT")),
+                eq(List.of("P1")),
+                eq(LocalDate.of(2026, 1, 1)),
+                eq(LocalDate.of(2026, 1, 31))))
+                .thenReturn(List.of(incident));
+
+        mockMvc.perform(get("/api/v1/incidents/filter")
+                        .param("query", "door")
+                        .param("severity", "HIGH", "CRITICAL")
+                        .param("status", "OPEN", "INVESTIGATING")
+                        .param("category", "THREAT")
+                        .param("priority", "P1")
+                        .param("startDate", "2026-01-01")
+                        .param("endDate", "2026-01-31"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].id").value("filtered-1"));
+
+        verify(incidentService).filterIncidents(
+                eq("analystA"), eq(false), eq("door"),
+                eq(List.of("HIGH", "CRITICAL")),
+                eq(List.of("OPEN", "INVESTIGATING")),
+                eq(List.of("THREAT")),
+                eq(List.of("P1")),
+                eq(LocalDate.of(2026, 1, 1)),
+                eq(LocalDate.of(2026, 1, 31)));
+    }
+
+    @Test
     @WithMockUser(roles = "ANALYST")
     void getById_returnsIncident() throws Exception {
         Incident incident = Incident.builder()
@@ -162,8 +202,6 @@ class IncidentControllerTest {
                 .status("INVESTIGATING")
                 .build();
 
-        when(incidentPermissionEvaluator.hasPermission(any(), any(), anyString(), eq("status_update")))
-                .thenReturn(true);
         when(incidentService.updateStatus(eq("test-id-1"), eq("INVESTIGATING"), any())).thenReturn(incident);
 
         mockMvc.perform(patch("/api/v1/incidents/test-id-1/status")
@@ -173,33 +211,8 @@ class IncidentControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "analystA", roles = "ANALYST")
-    void updateStatus_asAssignedAnalyst_succeeds() throws Exception {
-        Incident incident = Incident.builder()
-                .id("test-id-1")
-                .title("Test")
-                .description("Test")
-                .status("RESOLVED")
-                .assignedTo("analystA")
-                .build();
-
-        when(incidentPermissionEvaluator.hasPermission(any(), eq("test-id-1"), eq("incident"), eq("status_update")))
-                .thenReturn(true);
-        when(incidentService.updateStatus(eq("test-id-1"), eq("RESOLVED"), eq("analystA")))
-                .thenReturn(incident);
-
-        mockMvc.perform(patch("/api/v1/incidents/test-id-1/status")
-                        .param("status", "RESOLVED"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("RESOLVED"));
-    }
-
-    @Test
-    @WithMockUser(username = "analystB", roles = "ANALYST")
-    void updateStatus_asUnrelatedAnalyst_forbidden() throws Exception {
-        when(incidentPermissionEvaluator.hasPermission(any(), eq("test-id-1"), eq("incident"), eq("status_update")))
-                .thenReturn(false);
-
+    @WithMockUser(roles = "ANALYST")
+    void updateStatus_asAnalyst_forbidden() throws Exception {
         mockMvc.perform(patch("/api/v1/incidents/test-id-1/status")
                         .param("status", "RESOLVED"))
                 .andExpect(status().isForbidden());
