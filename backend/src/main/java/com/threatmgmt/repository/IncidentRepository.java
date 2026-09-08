@@ -39,9 +39,13 @@ public interface IncidentRepository extends JpaRepository<Incident, String> {
                    OR LOWER(COALESCE(i.reportedBy, '')) LIKE LOWER(CONCAT('%', :query, '%'))
                    OR LOWER(COALESCE(i.assignedTo, '')) LIKE LOWER(CONCAT('%', :query, '%')))
               AND (:severity IS NULL OR :severity = '' OR i.severity = :severity)
-              AND (:status IS NULL OR :status = '' OR i.status = :status)
+              AND (:status IS NULL OR :status = ''
+                   OR (:status = 'RESOLVED,CLOSED' AND (i.status = 'RESOLVED' OR i.status = 'CLOSED'))
+                   OR i.status = :status)
               AND (:category IS NULL OR :category = '' OR i.category = :category)
               AND (:priority IS NULL OR :priority = '' OR i.priority = :priority)
+              AND (:assignedTo IS NULL OR :assignedTo = '' OR i.assignedTo = :assignedTo)
+              AND (:reportedBy IS NULL OR :reportedBy = '' OR i.reportedBy = :reportedBy)
             """)
     Page<Incident> findPage(@Param("username") String username,
                             @Param("privileged") boolean privileged,
@@ -50,6 +54,8 @@ public interface IncidentRepository extends JpaRepository<Incident, String> {
                             @Param("status") String status,
                             @Param("category") String category,
                             @Param("priority") String priority,
+                            @Param("assignedTo") String assignedTo,
+                            @Param("reportedBy") String reportedBy,
                             Pageable pageable);
 
     // Native PostgreSQL Full-Text Search

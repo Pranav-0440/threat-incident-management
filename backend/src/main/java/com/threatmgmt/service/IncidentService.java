@@ -70,6 +70,8 @@ public class IncidentService {
                                   String status,
                                   String category,
                                   String priority,
+                                  String assignedTo,
+                                  String reportedBy,
                                   String sortBy,
                                   String direction) {
         int boundedPage = Math.max(page, 0);
@@ -95,6 +97,8 @@ public class IncidentService {
                 normalizeUpperFilter(status),
                 normalizeUpperFilter(category),
                 normalizeUpperFilter(priority),
+                normalizeTextFilter(assignedTo),
+                normalizeTextFilter(reportedBy),
                 PageRequest.of(boundedPage, boundedSize, sort));
     }
 

@@ -62,7 +62,7 @@ class IncidentPaginationControllerTest {
                         .and(Sort.by(Sort.Direction.DESC, "id")));
         when(incidentService.getPage(
                 eq("analyst"), eq(false), eq(1), eq(5), eq("phishing"), eq("high"),
-                eq("open"), isNull(), isNull(), eq("createdAt"), eq("desc")))
+                eq("open"), isNull(), isNull(), isNull(), isNull(), eq("createdAt"), eq("desc")))
                 .thenReturn(new PageImpl<>(List.of(incident), request, 6));
 
         mockMvc.perform(get("/api/v1/incidents/page")
@@ -84,7 +84,39 @@ class IncidentPaginationControllerTest {
                 .andExpect(jsonPath("$.last").value(true));
 
         verify(incidentService).getPage(
-                "analyst", false, 1, 5, "phishing", "high", "open", null, null,
+                "analyst", false, 1, 5, "phishing", "high", "open", null, null, null, null,
                 "createdAt", "desc");
+    }
+
+    @Test
+    @WithMockUser(username = "analyst", roles = "ANALYST")
+    void pageEndpointSupportsAssignedToAndReportedBy() throws Exception {
+        Incident incident = Incident.builder()
+                .id("incident-2")
+                .title("Database suspicious query")
+                .severity("MEDIUM")
+                .status("RESOLVED")
+                .assignedTo("analyst")
+                .reportedBy("system")
+                .build();
+        PageRequest request = PageRequest.of(0, 20,
+                Sort.by(Sort.Direction.DESC, "createdAt")
+                        .and(Sort.by(Sort.Direction.DESC, "id")));
+        when(incidentService.getPage(
+                eq("analyst"), eq(false), eq(0), eq(20), isNull(), isNull(),
+                eq("RESOLVED,CLOSED"), isNull(), isNull(), eq("analyst"), eq("system"), eq("createdAt"), eq("desc")))
+                .thenReturn(new PageImpl<>(List.of(incident), request, 1));
+
+        mockMvc.perform(get("/api/v1/incidents/page")
+                        .param("status", "RESOLVED,CLOSED")
+                        .param("assignedTo", "analyst")
+                        .param("reportedBy", "system"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value("incident-2"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(incidentService).getPage(
+                "analyst", false, 0, 20, null, null, "RESOLVED,CLOSED", null, null,
+                "analyst", "system", "createdAt", "desc");
     }
 }

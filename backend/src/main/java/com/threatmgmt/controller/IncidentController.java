@@ -45,13 +45,15 @@ public class IncidentController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String priority,
+            @RequestParam(required = false) String assignedTo,
+            @RequestParam(required = false) String reportedBy,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction,
             Authentication authentication) {
         boolean privileged = isPrivileged(authentication);
         Page<Incident> incidents = incidentService.getPage(
                 authentication.getName(), privileged, page, size, q, severity, status,
-                category, priority, sortBy, direction);
+                category, priority, assignedTo, reportedBy, sortBy, direction);
         return ResponseEntity.ok(new IncidentPageResponse(
                 incidents.getContent(), incidents.getNumber(), incidents.getSize(),
                 incidents.getTotalElements(), incidents.getTotalPages(), incidents.isFirst(),
