@@ -32,6 +32,7 @@ import {
 import CopyButton from '../components/CopyButton';
 import { copyTextToClipboard } from '../utils/clipboard';
 import { subscribeToIncidentUpdates } from '../utils/incidentCollaboration';
+import { API_BASE_URL } from '../api/client';
 
 export default function IncidentDetailPage() {
   const { id } = useParams();
@@ -618,7 +619,7 @@ export default function IncidentDetailPage() {
           {activeTab === 'comments' && (
             <div className="card">
               <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '20px' }}>Investigation Discussion</h3>
-              
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
                 {comments.length === 0 ? (
                   <p style={{ color: '#94a3b8' }}>No comments added yet. Start the investigation discussion below.</p>
@@ -679,7 +680,8 @@ export default function IncidentDetailPage() {
                         {(att.fileSize / 1024).toFixed(1)} KB • {att.uploadedBy}
                       </div>
                       <a
-                        href={`http://localhost:8080${att.fileUrl}`}
+
+                        href={`${API_BASE_URL}/attachments/${att.id}/download`}
                         target="_blank"
                         rel="noreferrer"
                         className="btn btn-secondary btn-sm"

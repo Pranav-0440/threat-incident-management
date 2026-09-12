@@ -8,3 +8,14 @@ services:
     envVars:
       - key: PORT
         value: 8080
+      - key: SUPABASE_S3_ENDPOINT
+        sync: false
+      - key: SUPABASE_S3_ACCESS_KEY
+        sync: false
+      - key: SUPABASE_S3_SECRET_KEY
+        sync: false
+      - key: SUPABASE_S3_REGION
+        value: us-east-1
+      - key: SUPABASE_BUCKET_NAME
+        value: incident-attachments
+ 
