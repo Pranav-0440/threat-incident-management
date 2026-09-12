@@ -1,5 +1,6 @@
 package com.threatmgmt.controller;
 
+import com.threatmgmt.dto.AnalyticsStatsResponse;
 import com.threatmgmt.dto.IncidentPageResponse;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
@@ -45,13 +46,15 @@ public class IncidentController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String priority,
+            @RequestParam(required = false) String assignedTo,
+            @RequestParam(required = false) String reportedBy,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String direction,
             Authentication authentication) {
         boolean privileged = isPrivileged(authentication);
         Page<Incident> incidents = incidentService.getPage(
                 authentication.getName(), privileged, page, size, q, severity, status,
-                category, priority, sortBy, direction);
+                category, priority, assignedTo, reportedBy, sortBy, direction);
         return ResponseEntity.ok(new IncidentPageResponse(
                 incidents.getContent(), incidents.getNumber(), incidents.getSize(),
                 incidents.getTotalElements(), incidents.getTotalPages(), incidents.isFirst(),
@@ -81,6 +84,12 @@ public class IncidentController {
     @GetMapping("/status/{status}")
     public ResponseEntity<List<Incident>> getByStatus(@PathVariable String status) {
         return ResponseEntity.ok(incidentService.findByStatus(status.toUpperCase()));
+    }
+
+    @GetMapping("/analytics")
+    public ResponseEntity<AnalyticsStatsResponse> getAnalytics(Authentication authentication) {
+        return ResponseEntity.ok(incidentService.getAnalytics(
+                authentication.getName(), isPrivileged(authentication)));
     }
 
     private boolean isPrivileged(Authentication authentication) {

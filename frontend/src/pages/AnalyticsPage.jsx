@@ -4,20 +4,15 @@ import { BarChart2, PieChart, TrendingUp, MapPin, CheckCircle, Clock } from 'luc
 
 export default function AnalyticsPage() {
   const [stats, setStats] = useState(null);
-  const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
     const loadAnalytics = async () => {
       try {
-        const [statsRes, incidentsRes] = await Promise.all([
-          incidentsAPI.getStats(),
-          incidentsAPI.getAll(),
-        ]);
+        const analyticsRes = await incidentsAPI.getAnalytics();
         if (isMounted) {
-          setStats(statsRes.data || {});
-          setIncidents(incidentsRes.data || []);
+          setStats(analyticsRes.data || {});
         }
       } catch (err) {
         console.error('Failed to load analytics data:', err);
@@ -39,19 +34,9 @@ export default function AnalyticsPage() {
     );
   }
 
-  // Location aggregations
-  const locationCounts = incidents.reduce((acc, curr) => {
-    const loc = curr.location || 'Building A - Data Center';
-    acc[loc] = (acc[loc] || 0) + 1;
-    return acc;
-  }, {});
-
-  // Category aggregations
-  const categoryCounts = incidents.reduce((acc, curr) => {
-    const cat = curr.category || 'THREAT';
-    acc[cat] = (acc[cat] || 0) + 1;
-    return acc;
-  }, {});
+  const categoryCounts = stats?.categoryCounts || {};
+  const locationCounts = stats?.locationCounts || {};
+  const totalIncidents = stats?.total || 0;
 
   return (
     <div className="page-container">
@@ -69,9 +54,9 @@ export default function AnalyticsPage() {
               <CheckCircle size={20} />
             </div>
           </div>
-          <div className="stat-card-value">92%</div>
+          <div className="stat-card-value">{Math.round(stats?.slaComplianceRate || 0)}%</div>
           <div style={{ fontSize: '12px', color: '#10b981', marginTop: '6px' }}>
-            8% Missed SLA (2 Overdue Alerts)
+            {(100 - (stats?.slaComplianceRate || 0)).toFixed(1)}% outside SLA ({stats?.overdueCount || 0} overdue incidents)
           </div>
         </div>
 
@@ -82,9 +67,9 @@ export default function AnalyticsPage() {
               <Clock size={20} />
             </div>
           </div>
-          <div className="stat-card-value">3.2 hrs</div>
+          <div className="stat-card-value">{(stats?.averageResolutionHours || 0).toFixed(1)} hrs</div>
           <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '6px' }}>
-            Target P1 SLA: 4.0 hrs
+            Calculated from persisted incident timestamps
           </div>
         </div>
 
@@ -95,9 +80,9 @@ export default function AnalyticsPage() {
               <TrendingUp size={20} />
             </div>
           </div>
-          <div className="stat-card-value" style={{ fontSize: '1.25rem' }}>UNAUTHORIZED ACCESS</div>
+          <div className="stat-card-value" style={{ fontSize: '1.25rem' }}>{stats?.topThreatVector || 'NONE'}</div>
           <div style={{ fontSize: '12px', color: '#f97316', marginTop: '6px' }}>
-            45% of total logged threats
+            {(stats?.topThreatVectorPercent || 0).toFixed(1)}% of scoped incidents
           </div>
         </div>
       </div>
@@ -142,7 +127,7 @@ export default function AnalyticsPage() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {Object.entries(categoryCounts).map(([cat, count]) => {
-              const pct = Math.round((count / (incidents.length || 1)) * 100);
+              const pct = Math.round((count / (totalIncidents || 1)) * 100);
               return (
                 <div key={cat}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>

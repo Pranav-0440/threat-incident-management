@@ -5,7 +5,6 @@ import com.threatmgmt.dto.AuthResponse;
 import com.threatmgmt.dto.ForgotPasswordRequest;
 import com.threatmgmt.dto.RegisterRequest;
 import com.threatmgmt.dto.ResetPasswordRequest;
-import com.threatmgmt.exception.InvalidPasswordException;
 import com.threatmgmt.model.User;
 import com.threatmgmt.security.JwtUtil;
 import com.threatmgmt.service.PasswordResetService;
@@ -14,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -68,13 +68,12 @@ public class AuthController {
         User user;
         try {
             user = userService.findByUsername(request.getUsername());
-        } catch (UsernameNotFoundException ex) {
-            throw new UsernameNotFoundException("User not found with username or email: " + request.getUsername());
-        }
 
-        // 2. Verify password against BCrypt hash in database
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new InvalidPasswordException("Invalid password. Please check your credentials and try again.");
+            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+                throw new BadCredentialsException("Invalid username or password");
+            }
+        } catch (UsernameNotFoundException | BadCredentialsException e) {
+            throw new BadCredentialsException("Invalid username or password");
         }
 
         // 3. Authenticate spring security session

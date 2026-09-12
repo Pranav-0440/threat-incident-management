@@ -40,18 +40,18 @@ class IncidentPaginationServiceTest {
     void pageRequestIsBoundedNormalizedAndStablySorted() {
         when(incidentRepo.findPage(
                 eq("analyst"), eq(false), eq("phishing"), eq("HIGH"), eq("OPEN"),
-                isNull(), isNull(), any(Pageable.class)))
+                isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(Page.empty());
 
         Page<Incident> result = incidentService.getPage(
                 "analyst", false, -4, 500, "  phishing  ", " high ", " open ",
-                null, null, "unsupported", "invalid");
+                null, null, null, null, "unsupported", "invalid");
 
         assertEquals(0, result.getNumber());
         ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
         verify(incidentRepo).findPage(
                 eq("analyst"), eq(false), eq("phishing"), eq("HIGH"), eq("OPEN"),
-                isNull(), isNull(), pageable.capture());
+                isNull(), isNull(), isNull(), isNull(), pageable.capture());
         assertEquals(0, pageable.getValue().getPageNumber());
         assertEquals(100, pageable.getValue().getPageSize());
         assertEquals("createdAt: DESC,id: DESC", pageable.getValue().getSort().toString());

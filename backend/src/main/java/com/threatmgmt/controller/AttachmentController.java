@@ -1,6 +1,7 @@
 package com.threatmgmt.controller;
 
 import com.threatmgmt.model.Attachment;
+import com.threatmgmt.security.IncidentPermissionEvaluator;
 import com.threatmgmt.service.AttachmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +21,7 @@ import java.util.List;
 public class AttachmentController {
 
     private final AttachmentService attachmentService;
+    private final IncidentPermissionEvaluator incidentPermissionEvaluator;
 
     @PostMapping("/upload/{incidentId}")
     @org.springframework.security.access.prepost.PreAuthorize("hasPermission(#incidentId, 'incident', 'read')")

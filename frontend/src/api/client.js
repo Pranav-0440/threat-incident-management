@@ -13,6 +13,12 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+export const resolveApiUrl = (path) => {
+  if (!path) return path;
+  if (/^https?:\/\//i.test(path)) return path;
+  return new URL(path, new URL(API_BASE_URL).origin).toString();
+};
+
 const client = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // 30 second timeout to handle backend cold starts & redeployments
@@ -52,13 +58,20 @@ client.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Auto-retry on Network Errors, Timeouts, or 502/503/504 Gateway errors (Server redeploying/sleeping)
-    const isServerRebuildingOrSleeping = !response || (response.status >= 502 && response.status <= 504) || error.code === 'ECONNABORTED';
+    // Auto-retry on Network Errors, Timeouts, or 502/503/504 Gateway errors (Server waking up/sleeping)
+    const isNetworkOrTimeout =
+      !response ||
+      (response.status >= 502 && response.status <= 504) ||
+      error.code === 'ECONNABORTED' ||
+      error.code === 'ERR_NETWORK' ||
+      error.code === 'ETIMEDOUT' ||
+      (typeof error.message === 'string' && error.message.toLowerCase().includes('timeout'));
 
-    if (isServerRebuildingOrSleeping && config && (!config._retryCount || config._retryCount < 3)) {
+    // Allow maximum 2 automatic retries (total 3 attempts: initial + 2 retries)
+    if (isNetworkOrTimeout && config && (!config._retryCount || config._retryCount < 2)) {
       config._retryCount = (config._retryCount || 0) + 1;
-      const delay = Math.pow(2, config._retryCount) * 1000; // 2s, 4s, 8s exponential backoff
-      console.warn(`[ThreatGuard API] Server is starting or deploying (Retry ${config._retryCount}/3). Retrying in ${delay / 1000}s...`);
+      const delay = Math.pow(2, config._retryCount) * 1000; // 2s on retry 1, 4s on retry 2
+      console.warn(`[ThreatGuard API] Server is starting or deploying (Retry ${config._retryCount}/2). Retrying in ${delay / 1000}s...`);
       await new Promise((resolve) => setTimeout(resolve, delay));
       return client(config);
     }
@@ -91,6 +104,7 @@ export const incidentsAPI = {
   getBySeverity: (severity) => client.get(`/incidents/severity/${severity}`),
   getByStatus: (status) => client.get(`/incidents/status/${status}`),
   getStats: () => client.get('/incidents/stats'),
+  getAnalytics: () => client.get('/incidents/analytics'),
 };
 
 // ========== Comments API ==========
@@ -107,6 +121,7 @@ export const attachmentsAPI = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   delete: (id) => client.delete(`/attachments/${id}`),
+  getFileUrl: (fileUrl) => resolveApiUrl(fileUrl),
 };
 
 // ========== Audit Logs API ==========

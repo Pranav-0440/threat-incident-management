@@ -6,8 +6,8 @@ WORKDIR /app
 COPY backend/pom.xml backend/
 COPY backend/src backend/src
 
-# Package application jar
-RUN mvn -f backend/pom.xml clean package -DskipTests
+# Package application jar with batch mode to prevent verbose download logs
+RUN mvn -f backend/pom.xml clean package -DskipTests --batch-mode
 
 # Production runtime stage
 FROM eclipse-temurin:21-jre-alpine
@@ -26,5 +26,5 @@ USER appuser
 # Expose default port
 EXPOSE 8080
 
-# Run Spring Boot app with dynamic PORT binding
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar app.jar"]
+# Run Spring Boot app with dynamic PORT binding and container memory limits
+ENTRYPOINT ["sh", "-c", "java -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -Dserver.port=${PORT:-8080} -jar app.jar"]
