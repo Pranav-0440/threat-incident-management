@@ -19,29 +19,23 @@ spring:
       max-lifetime: 60000
       connection-timeout: 20000
       connection-test-query: SELECT 1
-      data-source-properties:
-        prepareThreshold: 0
-        preparedStatementCacheQueries: 0
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 0
-    locations: classpath:db/migration
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
       ssl:
-        enabled: ${REDIS_SSL:false}
+        enabled: ${REDIS_SSL:true}
       timeout: 5000
+  cache:
+    type: redis
   servlet:
     multipart:
       max-file-size: 8MB
