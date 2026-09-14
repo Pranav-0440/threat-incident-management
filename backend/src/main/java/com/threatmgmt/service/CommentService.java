@@ -22,6 +22,9 @@ public class CommentService {
 
         public Comment addComment(String incidentId, String authorUsername, String authorFullName, String content) {
 
+                if (content == null || content.isBlank()) {
+                        throw new IllegalArgumentException("Comment content cannot be empty");
+                }
 
                 if (authorUsername == null || authorUsername.isBlank()) {
                         throw new IllegalArgumentException("Author username cannot be empty");
@@ -39,12 +42,24 @@ public class CommentService {
                                 .build();
                 Comment saved = commentRepository.save(comment);
 
-                notificationService.sendNotification(
-                                incident.getAssignedTo(),
+                auditLogService.logEvent(
+                                incidentId,
+                                authorUsername,
+                                authorFullName,
                                 "COMMENT_ADDED",
-                                "New comment",
-                                "A new comment was added to your incident",
-                                incidentId);
+                                authorFullName + " added a comment to the investigation",
+                                null);
+
+                if (incident.getAssignedTo() != null
+                                && !incident.getAssignedTo().equals(authorUsername)) {
+
+                        notificationService.sendNotification(
+                                        incident.getAssignedTo(),
+                                        "COMMENT_ADDED",
+                                        "New comment",
+                                        authorFullName + " added a new comment to your incident",
+                                        incidentId);
+                }
 
                 return saved;
         }
