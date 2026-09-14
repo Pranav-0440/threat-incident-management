@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { incidentsAPI, commentsAPI, attachmentsAPI, auditLogsAPI } from '../api/client';
+import { incidentsAPI, commentsAPI, attachmentsAPI, auditLogsAPI, API_BASE_URL } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import SeverityBadge from '../components/SeverityBadge';
 import StatusBadge from '../components/StatusBadge';
@@ -32,7 +32,7 @@ import {
 import CopyButton from '../components/CopyButton';
 import { copyTextToClipboard } from '../utils/clipboard';
 import { subscribeToIncidentUpdates } from '../utils/incidentCollaboration';
-import { API_BASE_URL } from '../api/client';
+
 
 export default function IncidentDetailPage() {
   const { id } = useParams();
