@@ -24,8 +24,21 @@ export default function UserManagementPage() {
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+  let ignore = false;
+
+  usersAPI.getAll()
+    .then(res => {
+      if (!ignore) setUsers(res.data || []);
+    })
+    .catch(err => console.error('Failed to fetch users:', err))
+    .finally(() => {
+      if (!ignore) setLoading(false);
+    });
+
+  return () => {
+    ignore = true;
+  };
+}, []);
 
   const handleRoleToggle = user => {
     const admin = user.roles?.some(r => r.includes('ADMIN'));
