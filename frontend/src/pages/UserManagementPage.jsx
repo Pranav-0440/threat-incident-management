@@ -172,7 +172,7 @@ export default function UserManagementPage() {
             ) : users.map(u => {
               const admin = u.roles?.some(r => r.includes('ADMIN'));
               const self = currentUser?.username === u.username;
-
+              const roleLabel = admin ? 'Analyst' : 'Admin';
               return (
                 <tr key={u.id} style={{
                   borderBottom: '1px solid var(--color-border)',
@@ -253,8 +253,8 @@ export default function UserManagementPage() {
                       title={self ? 'Cannot change own role' : 'Toggle between Analyst & Admin'}
                     >
                       {updatingId === u.id
-                        ? 'Updating...'
-                        : `Switch to ${admin ? 'Analyst' : 'Admin'}`}
+                      ? 'Updating...'
+                      : `Switch to ${roleLabel}`}
                     </button>
                   </td>
                 </tr>
