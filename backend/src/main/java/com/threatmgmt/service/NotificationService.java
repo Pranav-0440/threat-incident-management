@@ -51,8 +51,6 @@ public class NotificationService {
     }
 
     public void markAllAsRead(String username) {
-        List<Notification> notifications = notificationRepository.findByRecipientUsernameOrderByCreatedAtDesc(username);
-        notifications.forEach(n -> n.setRead(true));
-        notificationRepository.saveAll(notifications);
+        notificationRepository.updateAllNotificationsAsReadByUsername(username);
     }
 }
