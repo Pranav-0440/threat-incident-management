@@ -60,11 +60,11 @@ spring:
 
 supabase:
   s3:
-    endpoint: ${SUPABASE_S3_ENDPOINT}
-    access-key: ${SUPABASE_S3_ACCESS_KEY}
-    secret-key: ${SUPABASE_S3_SECRET_KEY}
+    endpoint: ${SUPABASE_S3_ENDPOINT:https://placeholder.supabase.co/storage/v1/s3}
+    access-key: ${SUPABASE_S3_ACCESS_KEY:placeholder-access-key}
+    secret-key: ${SUPABASE_S3_SECRET_KEY:placeholder-secret-key}
     region: ${SUPABASE_S3_REGION:us-east-1}
-    bucket: ${SUPABASE_BUCKET_NAME}            
+    bucket: ${SUPABASE_BUCKET_NAME:incident-attachments}
 
 server:
   port: ${PORT:8080}

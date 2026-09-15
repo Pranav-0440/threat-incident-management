@@ -41,7 +41,7 @@ public class AttachmentService {
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
 
-    @Value("${supabase.s3.bucket}")
+    @Value("${supabase.s3.bucket:incident-attachments}")
     private String bucketName;
 
     public Attachment uploadFile(String incidentId, MultipartFile file, String uploadedBy) throws IOException {

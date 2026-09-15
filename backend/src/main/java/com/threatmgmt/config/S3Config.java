@@ -15,25 +15,32 @@ import java.net.URI;
 @Configuration
 public class S3Config {
 
-    @Value("${supabase.s3.endpoint}")
+    @Value("${supabase.s3.endpoint:https://placeholder.supabase.co/storage/v1/s3}")
     private String endpoint;
 
-    @Value("${supabase.s3.access-key}")
+    @Value("${supabase.s3.access-key:placeholder-access-key}")
     private String accessKey;
 
-    @Value("${supabase.s3.secret-key}")
+    @Value("${supabase.s3.secret-key:placeholder-secret-key}")
     private String secretKey;
 
-    @Value("${supabase.s3.region}")
+    @Value("${supabase.s3.region:us-east-1}")
     private String region;
 
     @Bean
     public S3Client s3Client() {
+        String resolvedEndpoint = (endpoint != null && !endpoint.isBlank()) 
+                ? endpoint 
+                : "https://placeholder.supabase.co/storage/v1/s3";
+        String resolvedKey = (accessKey != null && !accessKey.isBlank()) ? accessKey : "placeholder-access-key";
+        String resolvedSecret = (secretKey != null && !secretKey.isBlank()) ? secretKey : "placeholder-secret-key";
+        String resolvedRegion = (region != null && !region.isBlank()) ? region : "us-east-1";
+
         return S3Client.builder()
-                .endpointOverride(URI.create(endpoint))
-                .region(Region.of(region))
+                .endpointOverride(URI.create(resolvedEndpoint))
+                .region(Region.of(resolvedRegion))
                 .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secretKey)))
+                        AwsBasicCredentials.create(resolvedKey, resolvedSecret)))
                 // Supabase requires path-style access (not virtual-hosted-style)
                 .serviceConfiguration(S3Configuration.builder()
                         .pathStyleAccessEnabled(true)
@@ -43,11 +50,18 @@ public class S3Config {
 
     @Bean
     public S3Presigner s3Presigner() {
+        String resolvedEndpoint = (endpoint != null && !endpoint.isBlank()) 
+                ? endpoint 
+                : "https://placeholder.supabase.co/storage/v1/s3";
+        String resolvedKey = (accessKey != null && !accessKey.isBlank()) ? accessKey : "placeholder-access-key";
+        String resolvedSecret = (secretKey != null && !secretKey.isBlank()) ? secretKey : "placeholder-secret-key";
+        String resolvedRegion = (region != null && !region.isBlank()) ? region : "us-east-1";
+
         return S3Presigner.builder()
-                .endpointOverride(URI.create(endpoint))
-                .region(Region.of(region))
+                .endpointOverride(URI.create(resolvedEndpoint))
+                .region(Region.of(resolvedRegion))
                 .credentialsProvider(StaticCredentialsProvider.create(
-                        AwsBasicCredentials.create(accessKey, secretKey)))
+                        AwsBasicCredentials.create(resolvedKey, resolvedSecret)))
                 .serviceConfiguration(S3Configuration.builder()
                         .pathStyleAccessEnabled(true)
                         .build())
