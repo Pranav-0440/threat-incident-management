@@ -20,38 +20,34 @@ public class CommentService {
         private final IncidentRepository incidentRepository;
         private final NotificationService notificationService;
 
+
         public Comment addComment(String incidentId, String authorUsername, String authorFullName, String content) {
 
-                if (content == null || content.isBlank()) {
-                        throw new IllegalArgumentException("Comment content cannot be empty");
-                }
-
-                if (authorUsername == null || authorUsername.isBlank()) {
-                        throw new IllegalArgumentException("Author username cannot be empty");
-                }
+               String validContent = requireNonBlank(content, "Comment content");
+               String validAuthorUsername = requireNonBlank(authorUsername, "Author username");
 
                 Incident incident = incidentRepository.findById(incidentId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Incident not found"));
 
                 Comment comment = Comment.builder()
                                 .incidentId(incidentId)
-                                .authorUsername(authorUsername)
+                                .authorUsername(validAuthorUsername)
                                 .authorFullName(authorFullName)
-                                .content(content)
+                                .content(validContent)
                                 .createdAt(LocalDateTime.now())
                                 .build();
                 Comment saved = commentRepository.save(comment);
 
                 auditLogService.logEvent(
                                 incidentId,
-                                authorUsername,
+                                validAuthorUsername,
                                 authorFullName,
                                 "COMMENT_ADDED",
                                 authorFullName + " added a comment to the investigation",
                                 null);
 
                 if (incident.getAssignedTo() != null
-                                && !incident.getAssignedTo().equals(authorUsername)) {
+                                && !incident.getAssignedTo().equals(validAuthorUsername)) {
 
                         notificationService.sendNotification(
                                         incident.getAssignedTo(),
@@ -62,6 +58,13 @@ public class CommentService {
                 }
 
                 return saved;
+        }
+
+         private String requireNonBlank(String value, String fieldName){
+                if (value == null || value.isBlank()) {
+                        throw new IllegalArgumentException(fieldName + " cannot be empty");
+                }
+                return value;
         }
 
         public List<Comment> getCommentsForIncident(String incidentId) {
