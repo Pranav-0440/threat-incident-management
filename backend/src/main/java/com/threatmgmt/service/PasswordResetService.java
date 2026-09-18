@@ -20,6 +20,8 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 
+import org.springframework.cache.annotation.CacheEvict;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -76,6 +78,7 @@ public class PasswordResetService {
     }
 
     @Transactional
+    @CacheEvict(value = "userDetails", allEntries = true)
     public void resetPassword(String rawToken, String newPassword) {
         if (rawToken == null || rawToken.isBlank()) {
             throw new PasswordResetTokenException();
