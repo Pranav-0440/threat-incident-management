@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { incidentsAPI } from '../api/client';
 import StatsCard from '../components/StatsCard';
@@ -11,32 +11,72 @@ import {
   TrendingUp,
   Search,
   PieChart,
-  BarChart2
+  BarChart2,
+  RefreshCw,
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const [stats, setStats] = useState(null);
   const [recentIncidents, setRecentIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
+  // Incrementing this triggers the useEffect to re-run (manual Retry)
+  const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
 
+  // Ensure the one-time auto-retry fires exactly once across all renders
+  const hasAutoRetried = useRef(false);
+  // Keep a reference to the pending retry timer for cleanup on unmount
+  const retryTimerRef = useRef(null);
+
   useEffect(() => {
+    let isCurrent = true;
+
     const fetchData = async () => {
+      setLoading(true);
+      setFetchError(null);
       try {
         const [statsRes, incidentsRes] = await Promise.all([
           incidentsAPI.getStats(),
           incidentsAPI.getPage({ page: 0, size: 5, sortBy: 'createdAt', direction: 'desc' }),
         ]);
+        if (!isCurrent) return;
         setStats(statsRes.data);
         setRecentIncidents(incidentsRes.data?.content || []);
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
+        if (!isCurrent) return;
+        setFetchError('Failed to load dashboard data. The server may be starting up or unreachable.');
+
+        // Schedule exactly one automatic retry after 3 seconds (initial load failure only)
+        if (!hasAutoRetried.current) {
+          hasAutoRetried.current = true;
+          retryTimerRef.current = setTimeout(() => {
+            if (isCurrent) {
+              setRetryCount((c) => c + 1);
+            }
+          }, 3000);
+          // Keep the loading spinner up while we wait for the auto-retry
+          return;
+        }
       } finally {
-        setLoading(false);
+        if (isCurrent) setLoading(false);
       }
     };
 
     fetchData();
+
+    return () => {
+      isCurrent = false;
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current);
+        retryTimerRef.current = null;
+      }
+    };
+  }, [retryCount]);
+
+  const handleRetry = useCallback(() => {
+    setRetryCount((c) => c + 1);
   }, []);
 
   if (loading) {
@@ -55,6 +95,40 @@ export default function DashboardPage() {
         <h1>SOC Threat Intelligence Dashboard</h1>
         <p>Real-time overview of active security incidents, SLA metrics, and risk distribution</p>
       </div>
+
+      {/* Error banner — shown only when a fetch has failed */}
+      {fetchError && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 'var(--space-4)',
+            padding: 'var(--space-4) var(--space-5)',
+            marginBottom: 'var(--space-6)',
+            borderRadius: 'var(--radius-md)',
+            background: 'var(--color-critical-bg)',
+            border: '1px solid var(--color-critical-border)',
+            color: 'var(--color-critical)',
+            fontSize: 'var(--font-size-sm)',
+            fontWeight: 500,
+          }}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <AlertTriangle size={16} />
+            {fetchError}
+          </span>
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={handleRetry}
+            style={{ flexShrink: 0 }}
+          >
+            <RefreshCw size={14} />
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Interactive Clickable Stats Grid */}
       <div className="stats-grid stagger" style={{ marginBottom: 'var(--space-6)' }}>

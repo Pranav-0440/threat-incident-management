@@ -11,12 +11,17 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
+import java.net.URL;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -33,9 +38,11 @@ public class AttachmentService {
 
     private final AttachmentRepository attachmentRepository;
     private final AuditLogService auditLogService;
+    private final S3Client s3Client;
+    private final S3Presigner s3Presigner;
 
-    @Value("${file.upload-dir:uploads}")
-    private String uploadDir;
+    @Value("${supabase.s3.bucket:incident-attachments}")
+    private String bucketName;
 
     public Attachment uploadFile(String incidentId, MultipartFile file, String uploadedBy) throws IOException {
         if (file == null || file.isEmpty()) {
@@ -62,41 +69,23 @@ public class AttachmentService {
         }
         String storedFileName = UUID.randomUUID().toString() + extension;
 
-    
         if (incidentId == null || !incidentId.matches("[a-zA-Z0-9_-]+$")) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Invalid incident ID format");
         }
 
-        Path baseUploadPath = Paths.get(uploadDir)
-                .toAbsolutePath()
-                .normalize();
+       
+        String key = "incidents/" + incidentId + "/" + storedFileName;
 
-        Path targetDir = baseUploadPath
-                .resolve(Paths.get("incidents", incidentId))
-                .normalize();
+        PutObjectRequest putRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(key)
+                .contentType(contentType)
+                .build();
 
-        if (!targetDir.startsWith(baseUploadPath)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Invalid target directory");
-        }
-
-        Files.createDirectories(targetDir);
-
-        Path targetLocation = targetDir
-                .resolve(storedFileName)
-                .normalize();
-
-        if (!targetLocation.startsWith(targetDir)) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Invalid target file path");
-        }
-        
-
-        Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
+        s3Client.putObject(putRequest,
+                RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
 
         Attachment attachment = Attachment.builder()
                 .incidentId(incidentId)
@@ -104,8 +93,8 @@ public class AttachmentService {
                 .originalName(originalFilename)
                 .fileType(contentType)
                 .fileSize(file.getSize())
-                .fileUrl("/api/v1/attachments/files/" + storedFileName)
-                .storagePath(targetLocation.toString())
+                .fileUrl(null)
+                .storagePath(key)
                 .uploadedBy(uploadedBy)
                 .uploadedAt(LocalDateTime.now())
                 .build();
@@ -127,24 +116,22 @@ public class AttachmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Attachment", "id", id));
     }
 
-    public Attachment getAttachmentByFileName(String fileName) {
-        if (fileName == null || fileName.isBlank()
-                || fileName.contains("..")
-                || fileName.contains("/")
-                || fileName.contains("\\")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Evidence filename is invalid");
-        }
-        return attachmentRepository.findByFileName(fileName)
-                .orElseThrow(() -> new ResourceNotFoundException("Attachment", "fileName", fileName));
-    }
+   
+    public String getDownloadUrl(String id) {
+        Attachment attachment = getAttachmentById(id);
 
-    public Path resolveStoredPath(Attachment attachment) {
-        Path uploadRoot = Paths.get(uploadDir).toAbsolutePath().normalize();
-        Path storedPath = Paths.get(attachment.getStoragePath()).toAbsolutePath().normalize();
-        if (!storedPath.startsWith(uploadRoot)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Evidence file is outside the configured storage root");
-        }
-        return storedPath;
+        GetObjectRequest getRequest = GetObjectRequest.builder()
+                .bucket(bucketName)
+                .key(attachment.getStoragePath())
+                .build();
+
+        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(15))
+                .getObjectRequest(getRequest)
+                .build();
+
+        URL url = s3Presigner.presignGetObject(presignRequest).url();
+        return url.toString();
     }
 
     public void deleteAttachment(String id, String requestingUser, boolean privileged) {
@@ -154,10 +141,12 @@ public class AttachmentService {
                     "Only the uploader or an administrator can delete evidence");
         }
         try {
-            Path path = Paths.get(attachment.getStoragePath());
-            Files.deleteIfExists(path);
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(attachment.getStoragePath())
+                    .build());
         } catch (Exception e) {
-            log.warn("Failed to delete physical file: {}", e.getMessage());
+            log.warn("Failed to delete file from Supabase Storage: {}", e.getMessage());
         }
         attachmentRepository.delete(attachment);
     }

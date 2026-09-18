@@ -4,18 +4,15 @@ import com.threatmgmt.model.Attachment;
 import com.threatmgmt.security.IncidentPermissionEvaluator;
 import com.threatmgmt.service.AttachmentService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -43,33 +40,17 @@ public class AttachmentController {
         return ResponseEntity.ok(attachmentService.getAttachmentsForIncident(incidentId));
     }
 
-    @GetMapping("/files/{fileName}")
-    public ResponseEntity<Resource> downloadFile(
-            @PathVariable String fileName,
-            Authentication authentication) {
-        Attachment attachment = attachmentService.getAttachmentByFileName(fileName);
-        if (!incidentPermissionEvaluator.hasPermission(authentication, attachment.getIncidentId(), "read")) {
-            throw new org.springframework.security.access.AccessDeniedException(
-                    "You do not have permission to read this incident evidence");
-        }
-
+    @GetMapping("/{id}/download")
+    @org.springframework.security.access.prepost.PreAuthorize("hasPermission(#id, 'attachment', 'read')")
+    public ResponseEntity<Void> downloadFile(@PathVariable String id) {
         try {
-            Path filePath = attachmentService.resolveStoredPath(attachment);
-            Resource resource = new UrlResource(filePath.toUri());
-            if (!resource.exists() || !resource.isReadable()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            String contentType = attachment.getFileType() != null
-                    ? attachment.getFileType()
-                    : MediaType.APPLICATION_OCTET_STREAM_VALUE;
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "inline; filename=\"" + attachment.getOriginalName() + "\"")
-                    .body(resource);
+            String presignedUrl = attachmentService.getDownloadUrl(id);
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(presignedUrl))
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .build();
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.notFound().build();
         }
     }
 
