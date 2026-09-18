@@ -15,36 +15,30 @@ public class CorsConfig {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CorsConfig.class);
 
-    @Value("${app.cors.allowed-origins:*}")
+    @Value("${app.cors.allowed-origins:http://localhost:5173}")
     private String allowedOrigins;
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration = new CorsConfiguration();
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
 
-        if (allowedOrigins == null || allowedOrigins.trim().isEmpty() || "*".equals(allowedOrigins.trim())) {
-            configuration.setAllowedOriginPatterns(List.of("*"));
-        } else {
-            List<String> originsList = Arrays.stream(allowedOrigins.split(","))
-                    .map(String::trim)
-                    .filter(s -> !s.isEmpty())
-                    .toList();
-            configuration.setAllowedOriginPatterns(originsList);
+        if (origins.isEmpty() || origins.stream().anyMatch(origin -> "*".equals(origin))) {
+            throw new IllegalStateException(
+                    "app.cors.allowed-origins must contain one or more explicit origins when credentials are enabled");
         }
 
-        // Guarantee CORS approval for Vercel, Railway, and localhost origins
-        configuration.addAllowedOriginPattern("https://*.vercel.app");
-        configuration.addAllowedOriginPattern("https://*.railway.app");
-        configuration.addAllowedOriginPattern("https://*.onrender.com");
-        configuration.addAllowedOriginPattern("http://localhost:*");
-
-        log.info("CORS configured for allowed origins: {}", allowedOrigins);
-
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
+
+        log.info("CORS configured for allowed origins: {}", origins);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

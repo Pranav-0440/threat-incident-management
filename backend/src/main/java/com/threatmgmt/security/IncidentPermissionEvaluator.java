@@ -1,11 +1,14 @@
 package com.threatmgmt.security;
 
+import com.threatmgmt.model.Attachment;
 import com.threatmgmt.model.Incident;
+import com.threatmgmt.repository.AttachmentRepository;
 import com.threatmgmt.repository.IncidentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+
 
 import java.io.Serializable;
 import java.util.Optional;
@@ -15,40 +18,58 @@ import java.util.Optional;
 public class IncidentPermissionEvaluator implements PermissionEvaluator {
 
     private final IncidentRepository incidentRepository;
-
+    private final AttachmentRepository attachmentRepository;
+     
     @Override
     public boolean hasPermission(Authentication authentication, Object targetId, Object permission) {
-        if (authentication == null || targetId == null) {
-            return false;
-        }
-
-        Optional<Incident> incidentOpt = incidentRepository.findById((String) targetId);
-        if (incidentOpt.isEmpty()) {
-            return false; // controller/service returns 404 separately
-        }
-        Incident incident = incidentOpt.get();
-
-        String username = authentication.getName();
-        boolean isAdmin = authentication.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
-                        || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
-
-        boolean isAssignedToMe = username.equals(incident.getAssignedTo());
-        boolean isReporter     = username.equals(incident.getReportedBy());
-
-        String permissionStr = permission.toString();
-
-        return switch (permissionStr) {
-            case "write" -> isAdmin || isAssignedToMe || isReporter;
-            case "status_update" -> isAdmin || isAssignedToMe || isReporter;
-            case "read"  -> isAdmin || isAssignedToMe || isReporter;
-            default -> false;
-        };
+    if (authentication == null || targetId == null) {
+        return false;
     }
 
-    @Override
-    public boolean hasPermission(Authentication authentication, Serializable targetId,
-                                  String targetType, Object permission) {
-        return hasPermission(authentication, targetId, permission);
+    Optional<Incident> incidentOpt = incidentRepository.findById((String) targetId);
+    if (incidentOpt.isEmpty()) {
+        return false; // controller/service returns 404 separately
     }
+    Incident incident = incidentOpt.get();
+
+    String username = authentication.getName();
+    boolean isAdmin = authentication.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                    || a.getAuthority().equals("ROLE_SUPER_ADMIN"));
+
+    boolean isAssignedToMe = username.equals(incident.getAssignedTo());
+    boolean isReporter     = username.equals(incident.getReportedBy());
+
+    String permissionStr = permission.toString();
+
+    return switch (permissionStr) {
+        case "write" -> isAdmin || isAssignedToMe || isReporter;
+        case "status_update" -> isAdmin || isAssignedToMe || isReporter;
+        case "read"  -> isAdmin || isAssignedToMe || isReporter;
+        default -> false;
+    };
+}
+
+@Override
+public boolean hasPermission(Authentication authentication, Serializable targetId,
+                              String targetType, Object permission) {
+    if (authentication == null || targetId == null || targetType == null) {
+        return false;
+    }
+
+    return switch (targetType) {
+        case "incident" -> hasPermission(authentication, targetId, permission);
+        case "attachment" -> hasAttachmentPermission(authentication, (String) targetId, permission);
+        default -> false;
+    };
+}
+
+private boolean hasAttachmentPermission(Authentication authentication, String attachmentId, Object permission) {
+    Optional<Attachment> attachmentOpt = attachmentRepository.findById(attachmentId);
+    if (attachmentOpt.isEmpty()) {
+        return false; // controller/service returns 404 separately
+    }
+    String incidentId = attachmentOpt.get().getIncidentId();
+    return hasPermission(authentication, incidentId, permission);
+}
 }
