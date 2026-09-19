@@ -15,3 +15,7 @@ target/
 
 # Log files
 *.log
+
+
+bin/ 
+*.class 
