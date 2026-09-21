@@ -207,6 +207,54 @@ class IncidentServiceTest {
     }
 
     @Test
+    void getAll_forAnalyst_usesOnlyAssignedOrReportedRecords() {
+        Incident assigned = Incident.builder().id("assigned").assignedTo("analystA").build();
+        Incident reported = Incident.builder().id("reported").reportedBy("analystA").build();
+        when(incidentRepo.findByAssignedToOrReportedBy("analystA", "analystA"))
+                .thenReturn(List.of(assigned, reported));
+
+        List<Incident> results = incidentService.getAll("analystA", false);
+
+        assertEquals(List.of(assigned, reported), results);
+        verify(incidentRepo).findByAssignedToOrReportedBy("analystA", "analystA");
+        verify(incidentRepo, never()).findAll();
+    }
+
+    @Test
+    void findById_forUnrelatedAnalyst_returnsNotFound() {
+        Incident incident = Incident.builder()
+                .id("restricted")
+                .reportedBy("reporter")
+                .assignedTo("assignee")
+                .build();
+        when(incidentRepo.findById("restricted")).thenReturn(Optional.of(incident));
+
+        assertThrows(com.threatmgmt.exception.ResourceNotFoundException.class,
+                () -> incidentService.findById("restricted", "analystA", false));
+    }
+
+    @Test
+    void searchIncidents_forAnalyst_filtersResultsByOwnership() {
+        Incident visible = Incident.builder()
+                .id("visible")
+                .title("Visible threat")
+                .reportedBy("analystA")
+                .build();
+        Incident hidden = Incident.builder()
+                .id("hidden")
+                .title("Hidden threat")
+                .reportedBy("analystB")
+                .build();
+        when(incidentRepo.findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase("threat", "threat"))
+                .thenReturn(List.of(visible, hidden));
+
+        List<IncidentSearchDoc> results = incidentService.searchIncidents("threat", "analystA", false);
+
+        assertEquals(1, results.size());
+        assertEquals("visible", results.get(0).getId());
+    }
+
+    @Test
     void searchIncidents_success() {
         Incident incident = Incident.builder()
                 .id("1")
