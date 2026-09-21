@@ -22,13 +22,13 @@ public class IncidentPermissionEvaluator implements PermissionEvaluator {
      
     @Override
     public boolean hasPermission(Authentication authentication, Object targetId, Object permission) {
-    if (authentication == null || targetId == null) {
+    if (authentication == null || targetId == null || permission == null) {
         return false;
     }
 
-    Optional<Incident> incidentOpt = incidentRepository.findById((String) targetId);
+    Optional<Incident> incidentOpt = incidentRepository.findById(targetId.toString());
     if (incidentOpt.isEmpty()) {
-        return false; // controller/service returns 404 separately
+        return true; // controller/service returns 404 separately
     }
     Incident incident = incidentOpt.get();
 
