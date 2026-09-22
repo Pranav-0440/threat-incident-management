@@ -1,6 +1,7 @@
 package com.threatmgmt.service;
 
 import com.threatmgmt.dto.RegisterRequest;
+import com.threatmgmt.security.AuthorityPolicy;
 import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.User;
@@ -10,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -39,18 +39,8 @@ public class UserService implements UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException(
                         "User not found with username or email: " + usernameOrEmail));
 
-        Set<String> allRoles = new HashSet<>(user.getRoles() != null ? user.getRoles() : List.of("ROLE_ANALYST"));
-        if (allRoles.contains("ROLE_SUPER_ADMIN")) {
-            allRoles.add("ROLE_ADMIN");
-            allRoles.add("ROLE_ANALYST");
-        }
-        if (allRoles.contains("ROLE_ADMIN")) {
-            allRoles.add("ROLE_ANALYST");
-        }
-
-        List<SimpleGrantedAuthority> authorities = allRoles.stream()
-                .map(SimpleGrantedAuthority::new)
-                .toList();
+        List<org.springframework.security.core.GrantedAuthority> authorities =
+                AuthorityPolicy.toAuthorities(user.getRoles());
 
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
