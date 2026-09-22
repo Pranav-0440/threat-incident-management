@@ -335,6 +335,8 @@ public class IncidentService {
 
         if ("RESOLVED".equals(status) || "CLOSED".equals(status)) {
             incident.setResolvedAt(LocalDateTime.now());
+        } else {
+            incident.setResolvedAt(null);
         }
 
         Incident saved = incidentRepo.save(incident);
