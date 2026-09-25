@@ -61,4 +61,12 @@ public interface IncidentRepository extends JpaRepository<Incident, String> {
     // Native PostgreSQL Full-Text Search
     @Query(value = "SELECT * FROM incidents WHERE to_tsvector('english', title || ' ' || coalesce(description, '')) @@ plainto_tsquery('english', :query)", nativeQuery = true)
     List<Incident> searchIncidentsNative(@Param("query") String query);
+
+    @Query("SELECT i.assignedTo AS username, " +
+       "COUNT(i) AS totalAssigned, " +
+       "COUNT(CASE WHEN i.status IN ('OPEN', 'INVESTIGATING') THEN 1 END) AS activeAssigned " +
+       "FROM Incident i " +
+       "WHERE i.assignedTo IS NOT NULL " +
+       "GROUP BY i.assignedTo")
+     List<AnalystWorkloadProjection> findWorkloadAggregates();
 }
