@@ -69,4 +69,21 @@ public interface IncidentRepository extends JpaRepository<Incident, String> {
        "WHERE i.assignedTo IS NOT NULL " +
        "GROUP BY i.assignedTo")
      List<AnalystWorkloadProjection> findWorkloadAggregates();
+
+    @Query("""
+            SELECT i FROM Incident i
+            WHERE i.id <> :id
+              AND (:privileged = true OR i.assignedTo = :username OR i.reportedBy = :username)
+              AND ((:category IS NOT NULL AND LOWER(i.category) = LOWER(:category))
+                OR (:severity IS NOT NULL AND LOWER(i.severity) = LOWER(:severity))
+                OR (:location IS NOT NULL AND LOWER(i.location) = LOWER(:location)))
+            ORDER BY i.createdAt DESC
+            """)
+    List<Incident> findRelatedCandidates(@Param("id") String id,
+                                         @Param("username") String username,
+                                         @Param("privileged") boolean privileged,
+                                         @Param("category") String category,
+                                         @Param("severity") String severity,
+                                         @Param("location") String location,
+                                         Pageable pageable);
 }

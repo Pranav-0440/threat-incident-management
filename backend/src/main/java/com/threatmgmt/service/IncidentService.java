@@ -184,22 +184,50 @@ public class IncidentService {
     }
 
     public Map<String, Object> getStats(String username, boolean privileged) {
-        List<Incident> incidents = getScopedIncidents(username, privileged);
+        return getStats(getScopedIncidents(username, privileged));
+    }
 
+    public Map<String, Object> getStats(List<Incident> incidents) {
         long total = incidents.size();
-        long open = countByStatus(incidents, "OPEN");
-        long investigating = countByStatus(incidents, "INVESTIGATING");
-        long waitingEvidence = countByStatus(incidents, "WAITING_EVIDENCE");
-        long resolved = countByStatus(incidents, "RESOLVED");
-        long closed = countByStatus(incidents, "CLOSED");
-        long critical = countBySeverity(incidents, "CRITICAL");
-        long high = countBySeverity(incidents, "HIGH");
-        long medium = countBySeverity(incidents, "MEDIUM");
-        long low = countBySeverity(incidents, "LOW");
-        double averageRiskScore = incidents.stream()
-                .mapToInt(Incident::getRiskScore)
-                .average()
-                .orElse(0.0);
+        long open = 0;
+        long investigating = 0;
+        long waitingEvidence = 0;
+        long resolved = 0;
+        long closed = 0;
+        long critical = 0;
+        long high = 0;
+        long medium = 0;
+        long low = 0;
+        long totalRiskScore = 0;
+
+        for (Incident i : incidents) {
+            String status = i.getStatus();
+            if (status != null) {
+                switch (status.toUpperCase()) {
+                    case "OPEN" -> open++;
+                    case "INVESTIGATING" -> investigating++;
+                    case "WAITING_EVIDENCE" -> waitingEvidence++;
+                    case "RESOLVED" -> resolved++;
+                    case "CLOSED" -> closed++;
+                    default -> {}
+                }
+            }
+
+            String severity = i.getSeverity();
+            if (severity != null) {
+                switch (severity.toUpperCase()) {
+                    case "CRITICAL" -> critical++;
+                    case "HIGH" -> high++;
+                    case "MEDIUM" -> medium++;
+                    case "LOW" -> low++;
+                    default -> {}
+                }
+            }
+
+            totalRiskScore += i.getRiskScore();
+        }
+
+        double averageRiskScore = total == 0 ? 0.0 : (double) totalRiskScore / total;
 
         Map<String, Object> stats = new HashMap<>();
         stats.put("total", total);
@@ -245,7 +273,7 @@ public class IncidentService {
             }
         }
 
-        Map<String, Object> stats = getStats(username, privileged);
+        Map<String, Object> stats = getStats(incidents);
         Map.Entry<String, Long> topCategory = categoryCounts.entrySet().stream()
                 .max(Map.Entry.<String, Long>comparingByValue()
                         .thenComparing(Map.Entry.comparingByKey(Comparator.reverseOrder())))
@@ -401,22 +429,18 @@ public class IncidentService {
 
     public List<Incident> getRelatedIncidents(String incidentId) {
         Incident current = findById(incidentId);
-        return findRelatedIncidents(current, incidentRepo.findAll());
+        return incidentRepo.findRelatedCandidates(
+                incidentId, null, true,
+                current.getCategory(), current.getSeverity(), current.getLocation(),
+                PageRequest.of(0, 4));
     }
 
     public List<Incident> getRelatedIncidents(String incidentId, String username, boolean privileged) {
         Incident current = findById(incidentId, username, privileged);
-        return findRelatedIncidents(current, getAll(username, privileged));
-    }
-
-    private List<Incident> findRelatedIncidents(Incident current, List<Incident> candidates) {
-        return candidates.stream()
-                .filter(i -> !i.getId().equals(current.getId()))
-                .filter(i -> (current.getCategory() != null && current.getCategory().equalsIgnoreCase(i.getCategory())) ||
-                             (current.getSeverity() != null && current.getSeverity().equalsIgnoreCase(i.getSeverity())) ||
-                             (current.getLocation() != null && current.getLocation().equalsIgnoreCase(i.getLocation())))
-                .limit(4)
-                .toList();
+        return incidentRepo.findRelatedCandidates(
+                incidentId, username, privileged,
+                current.getCategory(), current.getSeverity(), current.getLocation(),
+                PageRequest.of(0, 4));
     }
 
     public Incident toggleChecklistItem(String incidentId, String itemId, String username) {
