@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { incidentsAPI } from '../api/client';
-import { exportIncidentPDF, exportIncidentsCSV } from '../utils/exportUtils';
+import { exportIncidentPDF, exportIncidentsCSV, exportIncidentsPDF } from '../utils/exportUtils';
 import { FileText, Download, Filter, Calendar, Shield, Users, FileSpreadsheet } from 'lucide-react';
 
 export default function ReportsPage() {
@@ -9,6 +9,7 @@ export default function ReportsPage() {
   const [reportType, setReportType] = useState('incident'); // incident, weekly, monthly, analyst
   const [selectedAnalyst, setSelectedAnalyst] = useState('ALL');
   const [selectedSeverity, setSelectedSeverity] = useState('ALL');
+  const [referenceTime] = useState(() => Date.now());
 
   useEffect(() => {
     let isMounted = true;
@@ -26,20 +27,46 @@ export default function ReportsPage() {
     return () => { isMounted = false; };
   }, []);
 
-  const filteredIncidents = incidents.filter(i => {
-    if (selectedSeverity !== 'ALL' && i.severity !== selectedSeverity) return false;
-    if (selectedAnalyst !== 'ALL' && i.assignedTo !== selectedAnalyst) return false;
-    return true;
-  });
+  const reportDefinitions = {
+    incident: { label: 'Incident Summaries' },
+    weekly: { label: 'Weekly SOC Report' },
+    monthly: { label: 'Monthly Executive Overview' },
+    analyst: { label: 'Analyst Performance Report' },
+  };
+
+  const reportIncidents = useMemo(() => {
+    const filtered = incidents.filter(i => {
+      if (selectedSeverity !== 'ALL' && i.severity !== selectedSeverity) return false;
+      if (selectedAnalyst !== 'ALL' && (i.assignedToName || i.assignedTo) !== selectedAnalyst) return false;
+      return true;
+    });
+
+    if (reportType === 'analyst') {
+      return filtered.filter(i => i.assignedToName || i.assignedTo);
+    }
+
+    if (reportType === 'weekly' || reportType === 'monthly') {
+      const days = reportType === 'weekly' ? 7 : 30;
+      const cutoff = referenceTime - days * 24 * 60 * 60 * 1000;
+      return filtered.filter(i => {
+        const createdAt = Date.parse(i.createdAt);
+        return Number.isFinite(createdAt) && createdAt >= cutoff;
+      });
+    }
+
+    return filtered;
+  }, [incidents, referenceTime, reportType, selectedAnalyst, selectedSeverity]);
+
+  const reportLabel = reportDefinitions[reportType].label;
 
   const handleExportPDF = () => {
-    if (filteredIncidents.length === 0) return alert('No incidents match the selected report filter.');
-    exportIncidentPDF(filteredIncidents[0]);
+    if (reportIncidents.length === 0) return alert('No incidents match the selected report filter.');
+    exportIncidentsPDF(reportIncidents, reportLabel);
   };
 
   const handleExportCSV = () => {
-    if (filteredIncidents.length === 0) return alert('No incidents match the selected report filter.');
-    exportIncidentsCSV(filteredIncidents);
+    if (reportIncidents.length === 0) return alert('No incidents match the selected report filter.');
+    exportIncidentsCSV(reportIncidents);
   };
 
   if (loading) {
@@ -113,7 +140,7 @@ export default function ReportsPage() {
 
           <div style={{ marginLeft: 'auto', display: 'flex', gap: '10px' }}>
             <button className="btn btn-secondary btn-sm" onClick={handleExportCSV}>
-              <FileSpreadsheet size={14} /> Export CSV / Excel
+              <FileSpreadsheet size={14} /> Export CSV
             </button>
             <button className="btn btn-primary btn-sm" onClick={handleExportPDF}>
               <Download size={14} /> Download PDF Report
@@ -126,10 +153,10 @@ export default function ReportsPage() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '16px', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontWeight: 700, fontSize: '14px', color: '#f8fafc' }}>
-            Matching Report Records ({filteredIncidents.length})
+            {reportLabel} Records ({reportIncidents.length})
           </span>
           <span style={{ fontSize: '12px', color: '#64748b' }}>
-            Report Format: {reportType.toUpperCase()}
+            Scope: {reportType.toUpperCase()}
           </span>
         </div>
 
@@ -145,14 +172,14 @@ export default function ReportsPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredIncidents.length === 0 ? (
+            {reportIncidents.length === 0 ? (
               <tr>
                 <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: '#64748b' }}>
                   No incidents match the active report criteria.
                 </td>
               </tr>
             ) : (
-              filteredIncidents.map((i) => (
+              reportIncidents.map((i) => (
                 <tr key={i.id} style={{ borderBottom: '1px solid var(--color-border)' }}>
                   <td style={{ padding: '14px 16px', fontWeight: 600, color: '#f8fafc', fontSize: '13px' }}>{i.title}</td>
                   <td style={{ padding: '14px 16px', fontSize: '12px' }}>
