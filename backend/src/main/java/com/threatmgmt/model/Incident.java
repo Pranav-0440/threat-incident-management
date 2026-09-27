@@ -66,6 +66,10 @@ public class Incident {
     @Column(name = "watcher")
     private List<String> watchers;
 
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "incident_checklists", joinColumns = @JoinColumn(name = "incident_id"))
+    private List<ChecklistItem> checklist;
+
     @Column(columnDefinition = "TEXT")
     private String aiSummary;
 
