@@ -42,4 +42,14 @@ public class AuditLog {
             timestamp = LocalDateTime.now();
         }
     }
+
+    @PreUpdate
+    protected void rejectUpdate() {
+        throw new UnsupportedOperationException("Audit logs are append-only");
+    }
+
+    @PreRemove
+    protected void rejectDelete() {
+        throw new UnsupportedOperationException("Audit logs are append-only");
+    }
 }
