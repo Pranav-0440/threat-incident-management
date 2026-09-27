@@ -1,28 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Shield, UserPlus, UserCheck, ShieldAlert } from 'lucide-react';
-
-const ROLE_OPTIONS = [
-  {
-    id: 'ANALYST',
-    title: 'SOC Analyst',
-    subtitle: 'Monitor & report threats',
-    Icon: UserCheck,
-    activeColor: '#60a5fa',
-    borderColor: '#3b82f6',
-    bgColor: 'rgba(59, 130, 246, 0.12)'
-  },
-  {
-    id: 'ADMIN',
-    title: 'Administrator',
-    subtitle: 'Full org & user console',
-    Icon: ShieldAlert,
-    activeColor: '#f87171',
-    borderColor: '#ef4444',
-    bgColor: 'rgba(239, 68, 68, 0.12)'
-  }
-];
+import { Shield, UserPlus, UserCheck } from 'lucide-react';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -39,10 +18,6 @@ export default function RegisterPage() {
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleRoleSelect = (selectedRole) => {
-    setFormData((prev) => ({ ...prev, role: selectedRole }));
   };
 
   const handleSubmit = async (e) => {
@@ -84,43 +59,28 @@ export default function RegisterPage() {
         {error && <div className="auth-error">{error}</div>}
 
         <form onSubmit={handleSubmit}>
-          <fieldset className="form-group" style={{ marginBottom: 'var(--space-4)', border: 'none', padding: 0, margin: 0 }}>
-            <legend className="form-label" style={{ marginBottom: '6px' }}>Select Dashboard Role</legend>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              {ROLE_OPTIONS.map(({ id, title, subtitle, Icon, activeColor, borderColor, bgColor }) => {
-                const isSelected = formData.role === id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    id={`role-${id.toLowerCase()}-btn`}
-                    onClick={() => handleRoleSelect(id)}
-                    aria-pressed={isSelected}
-                    style={{
-                      padding: '12px',
-                      borderRadius: '8px',
-                      border: isSelected ? `2px solid ${borderColor}` : '1px solid var(--color-border)',
-                      backgroundColor: isSelected ? bgColor : 'rgba(15, 23, 42, 0.4)',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      textAlign: 'center',
-                      outline: 'none'
-                    }}
-                  >
-                    <div style={{ color: isSelected ? activeColor : '#94a3b8', marginBottom: '4px', display: 'flex', justifyContent: 'center' }}>
-                      <Icon size={20} />
-                    </div>
-                    <div style={{ fontWeight: 600, fontSize: '13px', color: isSelected ? '#fff' : '#cbd5e1' }}>
-                      {title}
-                    </div>
-                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
-                      {subtitle}
-                    </div>
-                  </button>
-                );
-              })}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '12px 14px',
+            borderRadius: '8px',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            backgroundColor: 'rgba(59, 130, 246, 0.08)',
+            marginBottom: 'var(--space-4)'
+          }}>
+            <div style={{ color: '#60a5fa', flexShrink: 0 }}>
+              <UserCheck size={22} />
             </div>
-          </fieldset>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '13px', color: '#fff' }}>
+                SOC Analyst Registration
+              </div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                Standard self-registration provisions Analyst permissions. Administrator access is provisioned by SOC Management.
+              </div>
+            </div>
+          </div>
 
           <div className="form-group" style={{ marginTop: 'var(--space-4)' }}>
             <label className="form-label" htmlFor="reg-fullname">Full Name</label>
