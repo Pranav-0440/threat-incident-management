@@ -74,6 +74,16 @@ public class CommentService {
         public void deleteComment(String commentId, String requestingUser, boolean privileged) {
                 Comment comment = commentRepository.findById(commentId)
                                 .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
+                deleteComment(comment.getIncidentId(), commentId, requestingUser, privileged);
+        }
+
+        public void deleteComment(String incidentId, String commentId, String requestingUser, boolean privileged) {
+                Comment comment = commentRepository.findById(commentId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
+
+                if (!comment.getIncidentId().equals(incidentId)) {
+                        throw new ResourceNotFoundException("Comment " + commentId + " does not belong to incident " + incidentId);
+                }
 
                 if (!privileged && !requestingUser.equals(comment.getAuthorUsername())) {
                         throw new org.springframework.security.access.AccessDeniedException(
@@ -81,7 +91,7 @@ public class CommentService {
                 }
 
                 auditLogService.logEvent(
-                                comment.getIncidentId(),
+                                incidentId,
                                 requestingUser,
                                 requestingUser,
                                 "COMMENT_DELETED",

@@ -22,7 +22,7 @@ public class CommentController {
     private final CommentService commentService;
 
     @PostMapping
-    @PreAuthorize("(hasRole('ANALYST') or hasRole('ADMIN')) and hasPermission(#incidentId, 'incident', 'write')")
+    @PreAuthorize("(hasRole('ANALYST') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')) and hasPermission(#incidentId, 'incident', 'write')")
     public ResponseEntity<Comment> addComment(
             @PathVariable @NotBlank String incidentId,
             @RequestBody Map<String, String> payload,
@@ -51,7 +51,7 @@ public class CommentController {
         boolean privileged = authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
                         || authority.getAuthority().equals("ROLE_SUPER_ADMIN"));
-        commentService.deleteComment(commentId, authentication.getName(), privileged);
+        commentService.deleteComment(incidentId, commentId, authentication.getName(), privileged);
         return ResponseEntity.noContent().build();
     }
 }

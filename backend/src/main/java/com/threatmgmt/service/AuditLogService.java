@@ -4,6 +4,8 @@ import com.threatmgmt.model.AuditLog;
 import com.threatmgmt.repository.AuditLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -51,5 +53,9 @@ public class AuditLogService {
 
     public List<AuditLog> getAllLogs() {
         return auditLogRepository.findAllByOrderByTimestampDesc();
+    }
+
+    public Page<AuditLog> getPaginatedLogs(Pageable pageable) {
+        return auditLogRepository.findAll(pageable);
     }
 }
