@@ -271,4 +271,57 @@ class IncidentServiceTest {
         assertEquals("Phishing Threat", results.get(0).getTitle());
         verify(incidentRepo, times(1)).findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(any(), any());
     }
+
+    @Test
+    void exportIncidentsCsv_sanitizesFormulaInjectionAndLogsAudit() {
+        Incident malicious = Incident.builder()
+                .id("inc-malicious")
+                .title("=cmd|' /C calc'!A0")
+                .severity("+CRITICAL")
+                .priority("-P1")
+                .category("@THREAT")
+                .status("OPEN")
+                .riskScore(95)
+                .reportedBy("analyst1")
+                .assignedTo("analyst2")
+                .assignedToName("Analyst Two")
+                .createdAt(java.time.LocalDateTime.of(2026, 9, 27, 10, 0))
+                .build();
+
+        when(incidentRepo.findAll()).thenReturn(List.of(malicious));
+
+        byte[] csvBytes = incidentService.exportIncidentsCsv("admin_user", true);
+        String csv = new String(csvBytes, java.nio.charset.StandardCharsets.UTF_8);
+
+        assertTrue(csv.contains("ID,Title,Severity,Priority,Category,Status,Risk Score,Reported By,Assigned To,Created At"));
+        // CWE-1236 check: formulas must have prepended single quote
+        assertTrue(csv.contains("\"'=cmd|' /C calc'!A0\""));
+        assertTrue(csv.contains("\"'+CRITICAL\""));
+        assertTrue(csv.contains("\"'-P1\""));
+        assertTrue(csv.contains("\"'@THREAT\""));
+
+        verify(auditLogService).logEvent(
+                isNull(), eq("admin_user"), eq("admin_user"), eq("INCIDENTS_EXPORTED"),
+                contains("Exported 1 incidents in CSV format"), any());
+    }
+
+    @Test
+    void getExportIncidents_scopesIncidentsForAnalystAndLogsAudit() {
+        Incident incident = Incident.builder()
+                .id("inc-scoped")
+                .title("Scoped Alert")
+                .reportedBy("analyst_bob")
+                .build();
+
+        when(incidentRepo.findByAssignedToOrReportedBy("analyst_bob", "analyst_bob"))
+                .thenReturn(List.of(incident));
+
+        List<Incident> result = incidentService.getExportIncidents("analyst_bob", false);
+
+        assertEquals(1, result.size());
+        assertEquals("inc-scoped", result.get(0).getId());
+        verify(auditLogService).logEvent(
+                isNull(), eq("analyst_bob"), eq("analyst_bob"), eq("INCIDENTS_EXPORTED"),
+                contains("Exported 1 incidents in JSON format"), any());
+    }
 }

@@ -97,6 +97,31 @@ public class IncidentController {
                 authentication.getName(), isPrivileged(authentication)));
     }
 
+    @GetMapping("/export")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> exportIncidents(
+            @RequestParam(defaultValue = "csv") String format,
+            Authentication authentication) {
+        boolean privileged = isPrivileged(authentication);
+        String username = authentication.getName();
+        String dateStamp = java.time.LocalDate.now().toString();
+
+        if ("json".equalsIgnoreCase(format)) {
+            List<Incident> incidents = incidentService.getExportIncidents(username, privileged);
+            return ResponseEntity.ok()
+                    .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"threat_incidents_" + dateStamp + ".json\"")
+                    .body(incidents);
+        }
+
+        byte[] csvData = incidentService.exportIncidentsCsv(username, privileged);
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"threat_incidents_" + dateStamp + ".csv\"")
+                .body(csvData);
+    }
+
     private boolean isPrivileged(Authentication authentication) {
         return authentication.getAuthorities().stream()
                 .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN")
