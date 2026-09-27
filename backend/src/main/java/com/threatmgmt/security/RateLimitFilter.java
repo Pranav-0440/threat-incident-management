@@ -17,15 +17,25 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Set;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final Duration BUCKET_TTL = Duration.ofMinutes(10);
     private static final long MAX_TRACKED_IPS = 100_000;
- 
+
+    private static final Set<String> RATE_LIMITED_PATHS = Set.of(
+            "/api/v1/auth/login",
+            "/api/v1/auth/register",
+            "/api/v1/auth/forgot-password",
+            "/api/v1/auth/reset-password"
+    );
+
     private final Cache<String, Bucket> ipBucketMap = Caffeine.newBuilder()
             .expireAfterAccess(BUCKET_TTL)
             .maximumSize(MAX_TRACKED_IPS)
@@ -42,8 +52,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String requestPath = request.getRequestURI();
+        String normalizedPath = (requestPath != null && requestPath.endsWith("/") && requestPath.length() > 1)
+                ? requestPath.substring(0, requestPath.length() - 1)
+                : requestPath;
 
-        if (!requestPath.equals("/api/v1/auth/login")) {
+        if (normalizedPath == null || !RATE_LIMITED_PATHS.contains(normalizedPath)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -51,13 +64,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String ipAddr = resolveClientIp(request);
         Bucket bucket = ipBucketMap.get(ipAddr, k -> createNewBucket());
         boolean allowed = bucket.tryConsume(1);
-  
+
 
         if (allowed) {
             filterChain.doFilter(request, response);
         } else {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            return;
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            response.setHeader("Retry-After", "60");
+            response.getWriter().write(
+                    "{\"timestamp\":\"" + Instant.now() + "\",\"status\":429,\"error\":\"Too Many Requests\",\"message\":\"Rate limit exceeded. Please try again later.\"}"
+            );
         }
 
     }

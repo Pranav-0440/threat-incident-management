@@ -13,13 +13,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -29,7 +28,6 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
     private final UserService userService;
-    private final PasswordEncoder passwordEncoder;
     private final PasswordResetService passwordResetService;
 
     @PostMapping("/register")
@@ -48,38 +46,29 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<java.util.Map<String, String>> forgotPassword(
+    public ResponseEntity<Map<String, String>> forgotPassword(
             @Valid @RequestBody ForgotPasswordRequest request) {
         passwordResetService.requestReset(request.identifier());
-        return ResponseEntity.accepted().body(java.util.Map.of(
+        return ResponseEntity.accepted().body(Map.of(
                 "message", "If an account matches that identifier, a password reset link will be sent."));
     }
 
     @PostMapping("/reset-password")
-    public ResponseEntity<java.util.Map<String, String>> resetPassword(
+    public ResponseEntity<Map<String, String>> resetPassword(
             @Valid @RequestBody ResetPasswordRequest request) {
         passwordResetService.resetPassword(request.token(), request.newPassword());
-        return ResponseEntity.ok(java.util.Map.of("message", "Password reset successfully."));
+        return ResponseEntity.ok(Map.of("message", "Password reset successfully."));
     }
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
-        // 1. Fetch user from database by username or email
-        User user;
-        try {
-            user = userService.findByUsername(request.getUsername());
+        // Authenticate credentials through Spring Security's AuthenticationManager
+        // This validates credentials via DaoAuthenticationProvider with a single BCrypt evaluation
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword())
+        );
 
-            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                throw new BadCredentialsException("Invalid username or password");
-            }
-        } catch (UsernameNotFoundException | BadCredentialsException e) {
-            throw new BadCredentialsException("Invalid username or password");
-        }
-
-        // 3. Authenticate spring security session
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        user.getUsername(), request.getPassword()));
+        User user = userService.findByUsername(authentication.getName());
 
         List<String> effectiveRoles = jwtUtil.normalizeRoles(user.getRoles());
         String token = jwtUtil.generateToken(user.getUsername(), effectiveRoles);
