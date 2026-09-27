@@ -55,6 +55,7 @@ export default function IncidentDetailPage() {
 
   // Assignment & Status updating
   const [assignedAnalyst, setAssignedAnalyst] = useState('');
+  const [assignError, setAssignError] = useState('');
   const [updatingAnalyst, setUpdatingAnalyst] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -155,12 +156,15 @@ export default function IncidentDetailPage() {
   const handleAssignAnalyst = async () => {
     if (!assignedAnalyst.trim()) return;
     setUpdatingAnalyst(true);
+    setAssignError('');
     try {
-      const res = await incidentsAPI.assignAnalyst(id, assignedAnalyst, assignedAnalyst);
+      const res = await incidentsAPI.assignAnalyst(id, assignedAnalyst.trim(), assignedAnalyst.trim());
       setIncident(res.data);
       fetchAuditLogs();
     } catch (err) {
       console.error('Failed to assign analyst:', err);
+      const msg = err.response?.data?.message || 'Analyst username not found or invalid.';
+      setAssignError(msg);
     } finally {
       setUpdatingAnalyst(false);
     }
@@ -712,13 +716,21 @@ export default function IncidentDetailPage() {
             <h3 style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', marginBottom: '12px' }}>
               Assign Analyst
             </h3>
+            {assignError && (
+              <div style={{ fontSize: '12px', color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '6px 10px', borderRadius: '4px', marginBottom: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                {assignError}
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
                 type="text"
                 className="form-control"
                 placeholder="Analyst username..."
                 value={assignedAnalyst}
-                onChange={(e) => setAssignedAnalyst(e.target.value)}
+                onChange={(e) => {
+                  setAssignedAnalyst(e.target.value);
+                  if (assignError) setAssignError('');
+                }}
                 style={{ flex: 1, fontSize: '0.85rem' }}
               />
               <button className="btn btn-secondary btn-sm" onClick={handleAssignAnalyst} disabled={updatingAnalyst}>

@@ -4,8 +4,10 @@ import com.threatmgmt.dto.AnalyticsStatsResponse;
 import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
+import com.threatmgmt.model.User;
 import com.threatmgmt.repository.IncidentRepository;
 import com.threatmgmt.repository.IncidentSearchRepository;
+import com.threatmgmt.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,6 +35,7 @@ public class IncidentService {
     private final AuditLogService auditLogService;
     private final NotificationService notificationService;
     private final IncidentCollaborationPublisher collaborationPublisher;
+    private final UserRepository userRepository;
 
     @Autowired(required = false)
     private IncidentSearchRepository searchRepo;
@@ -333,19 +336,39 @@ public class IncidentService {
     public Incident assignAnalyst(String id, String analystUsername, String analystName, String updatedBy) {
         Incident incident = findById(id);
         String prevAnalyst = incident.getAssignedTo();
-        incident.setAssignedTo(analystUsername);
-        incident.setAssignedToName(analystName);
+
+        String resolvedUsername = analystUsername != null && !analystUsername.isBlank()
+                ? analystUsername.trim()
+                : null;
+        String resolvedName = analystName != null && !analystName.isBlank()
+                ? analystName.trim()
+                : null;
+
+        if (resolvedUsername != null) {
+            User targetUser = userRepository.findByUsername(resolvedUsername)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "username", resolvedUsername));
+
+            if (resolvedName == null) {
+                resolvedName = targetUser.getFullName() != null && !targetUser.getFullName().isBlank()
+                        ? targetUser.getFullName()
+                        : targetUser.getUsername();
+            }
+        }
+
+        incident.setAssignedTo(resolvedUsername);
+        incident.setAssignedToName(resolvedName);
         incident.setUpdatedAt(LocalDateTime.now());
 
         Incident saved = incidentRepo.save(incident);
         indexToElasticsearch(saved);
 
+        String displayActor = resolvedName != null ? resolvedName : (resolvedUsername != null ? resolvedUsername : "Unassigned");
         auditLogService.logEvent(id, updatedBy, updatedBy, "ASSIGNED",
-                "Incident assigned to " + (analystName != null ? analystName : analystUsername), null);
+                "Incident assigned to " + displayActor, null);
 
-        if (analystUsername != null && !analystUsername.equals(prevAnalyst)) {
+        if (resolvedUsername != null && !resolvedUsername.equals(prevAnalyst)) {
             notificationService.sendNotification(
-                    analystUsername,
+                    resolvedUsername,
                     "INCIDENT_ASSIGNED",
                     "Assigned: " + incident.getTitle(),
                     "Incident assigned to you by " + updatedBy + " with severity " + incident.getSeverity(),
