@@ -17,6 +17,10 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import com.threatmgmt.repository.AnalystWorkloadProjection;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -120,29 +124,32 @@ public class UserService implements UserDetailsService {
         return updated;
     }
 
-    public List<Map<String, Object>> getAnalystWorkloads() {
-        List<User> users = userRepository.findAll();
-        List<Incident> allIncidents = incidentRepository.findAll();
+   public List<Map<String, Object>> getAnalystWorkloads() {
+    List<User> users = userRepository.findAll();
 
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (User u : users) {
-            long assigned = allIncidents.stream()
-                    .filter(i -> u.getUsername().equals(i.getAssignedTo()))
-                    .count();
-            long openAssigned = allIncidents.stream()
-                    .filter(i -> u.getUsername().equals(i.getAssignedTo()) && ("OPEN".equals(i.getStatus()) || "INVESTIGATING".equals(i.getStatus())))
-                    .count();
+    Map<String, AnalystWorkloadProjection> stats = incidentRepository
+            .findWorkloadAggregates()
+            .stream()
+            .collect(Collectors.toMap(
+                    AnalystWorkloadProjection::getUsername,
+                    Function.identity()));
 
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", u.getId());
-            map.put("username", u.getUsername());
-            map.put("fullName", u.getFullName() != null ? u.getFullName() : u.getUsername());
-            map.put("email", u.getEmail());
-            map.put("roles", u.getRoles());
-            map.put("totalAssigned", assigned);
-            map.put("activeAssigned", openAssigned);
-            result.add(map);
-        }
-        return result;
+    List<Map<String, Object>> result = new ArrayList<>();
+    for (User u : users) {
+        AnalystWorkloadProjection p = stats.get(u.getUsername());
+        long assigned = p != null ? p.getTotalAssigned() : 0L;
+        long openAssigned = p != null ? p.getActiveAssigned() : 0L;
+
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", u.getId());
+        map.put("username", u.getUsername());
+        map.put("fullName", u.getFullName() != null ? u.getFullName() : u.getUsername());
+        map.put("email", u.getEmail());
+        map.put("roles", u.getRoles());
+        map.put("totalAssigned", assigned);
+        map.put("activeAssigned", openAssigned);
+        result.add(map);
     }
+    return result;
+}
 }
