@@ -105,6 +105,7 @@ export const incidentsAPI = {
   getByStatus: (status) => client.get(`/incidents/status/${status}`),
   getStats: () => client.get('/incidents/stats'),
   getAnalytics: () => client.get('/incidents/analytics'),
+  exportIncidents: (format = 'csv') => client.get(`/incidents/export?format=${format}`, { responseType: 'blob' }),
 };
 
 // ========== Comments API ==========

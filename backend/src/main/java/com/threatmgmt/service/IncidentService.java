@@ -531,4 +531,52 @@ public class IncidentService {
         doc.setCreatedAt(i.getCreatedAt());
         return doc;
     }
+
+    public byte[] exportIncidentsCsv(String username, boolean privileged) {
+        List<Incident> incidents = getScopedIncidents(username, privileged);
+        auditLogService.logEvent(null, username, username, "INCIDENTS_EXPORTED",
+                "Exported " + incidents.size() + " incidents in CSV format",
+                Map.of("format", "CSV", "count", incidents.size()));
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("ID,Title,Severity,Priority,Category,Status,Risk Score,Reported By,Assigned To,Created At\n");
+
+        for (Incident inc : incidents) {
+            sb.append(escapeCsvField(inc.getId())).append(",");
+            sb.append(escapeCsvField(inc.getTitle())).append(",");
+            sb.append(escapeCsvField(inc.getSeverity())).append(",");
+            sb.append(escapeCsvField(inc.getPriority())).append(",");
+            sb.append(escapeCsvField(inc.getCategory())).append(",");
+            sb.append(escapeCsvField(inc.getStatus())).append(",");
+            sb.append(inc.getRiskScore()).append(",");
+            sb.append(escapeCsvField(inc.getReportedBy())).append(",");
+            sb.append(escapeCsvField(inc.getAssignedToName() != null ? inc.getAssignedToName() : inc.getAssignedTo())).append(",");
+            sb.append(escapeCsvField(inc.getCreatedAt() != null ? inc.getCreatedAt().toString() : "")).append("\n");
+        }
+
+        return sb.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    public List<Incident> getExportIncidents(String username, boolean privileged) {
+        List<Incident> incidents = getScopedIncidents(username, privileged);
+        auditLogService.logEvent(null, username, username, "INCIDENTS_EXPORTED",
+                "Exported " + incidents.size() + " incidents in JSON format",
+                Map.of("format", "JSON", "count", incidents.size()));
+        return incidents;
+    }
+
+    private String escapeCsvField(String value) {
+        if (value == null) {
+            return "\"\"";
+        }
+        String sanitized = value;
+        // Formula injection mitigation (CWE-1236): Prepend single quote if field starts with =, +, -, @, tab, or CR
+        if (!sanitized.isEmpty()) {
+            char firstChar = sanitized.charAt(0);
+            if (firstChar == '=' || firstChar == '+' || firstChar == '-' || firstChar == '@' || firstChar == '\t' || firstChar == '\r') {
+                sanitized = "'" + sanitized;
+            }
+        }
+        return "\"" + sanitized.replace("\"", "\"\"") + "\"";
+    }
 }
