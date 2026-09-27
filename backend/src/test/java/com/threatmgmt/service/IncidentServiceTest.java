@@ -1,8 +1,11 @@
 package com.threatmgmt.service;
 
+import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
+import com.threatmgmt.model.User;
 import com.threatmgmt.repository.IncidentRepository;
+import com.threatmgmt.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,6 +34,9 @@ class IncidentServiceTest {
 
     @Mock
     private IncidentCollaborationPublisher collaborationPublisher;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private IncidentService incidentService;
@@ -270,5 +276,64 @@ class IncidentServiceTest {
         assertEquals(1, results.size());
         assertEquals("Phishing Threat", results.get(0).getTitle());
         verify(incidentRepo, times(1)).findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(any(), any());
+    }
+
+    @Test
+    void assignAnalyst_withValidUser_resolvesNameAndAssigns() {
+        Incident incident = Incident.builder()
+                .id("inc-1")
+                .title("Database Intrusion")
+                .severity("HIGH")
+                .build();
+        User analyst = User.builder()
+                .username("analyst_john")
+                .fullName("John Doe")
+                .build();
+
+        when(incidentRepo.findById("inc-1")).thenReturn(Optional.of(incident));
+        when(userRepository.findByUsername("analyst_john")).thenReturn(Optional.of(analyst));
+        when(incidentRepo.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Incident assigned = incidentService.assignAnalyst("inc-1", "analyst_john", null, "admin_user");
+
+        assertEquals("analyst_john", assigned.getAssignedTo());
+        assertEquals("John Doe", assigned.getAssignedToName());
+        verify(notificationService).sendNotification(
+                eq("analyst_john"), eq("INCIDENT_ASSIGNED"), anyString(), anyString(), eq("inc-1"));
+        verify(auditLogService).logEvent(eq("inc-1"), eq("admin_user"), eq("admin_user"), eq("ASSIGNED"),
+                contains("John Doe"), isNull());
+    }
+
+    @Test
+    void assignAnalyst_withNonExistentUser_throwsResourceNotFoundException() {
+        Incident incident = Incident.builder()
+                .id("inc-1")
+                .title("Database Intrusion")
+                .build();
+
+        when(incidentRepo.findById("inc-1")).thenReturn(Optional.of(incident));
+        when(userRepository.findByUsername("ghost_user")).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                incidentService.assignAnalyst("inc-1", "ghost_user", "Ghost", "admin_user"));
+
+        verify(incidentRepo, never()).save(any());
+    }
+
+    @Test
+    void assignAnalyst_withBlankUsername_clearsAssignment() {
+        Incident incident = Incident.builder()
+                .id("inc-1")
+                .assignedTo("previous_analyst")
+                .assignedToName("Previous Analyst")
+                .build();
+
+        when(incidentRepo.findById("inc-1")).thenReturn(Optional.of(incident));
+        when(incidentRepo.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Incident unassigned = incidentService.assignAnalyst("inc-1", "", null, "admin_user");
+
+        assertNull(unassigned.getAssignedTo());
+        assertNull(unassigned.getAssignedToName());
     }
 }
