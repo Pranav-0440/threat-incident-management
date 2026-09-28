@@ -1,5 +1,5 @@
 # Multi-stage production build for Spring Boot 3.3 (Java 21)
-FROM maven:3.9.6-eclipse-temurin-21 AS build
+FROM maven:3.9.15-eclipse-temurin-26 AS build
 WORKDIR /app
 
 # Copy pom.xml and source code
