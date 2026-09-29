@@ -13,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Map;
 
@@ -33,9 +32,6 @@ class PasswordResetControllerTest {
     private UserService userService;
 
     @Mock
-    private PasswordEncoder passwordEncoder;
-
-    @Mock
     private PasswordResetService passwordResetService;
 
     private AuthController controller;
@@ -43,7 +39,7 @@ class PasswordResetControllerTest {
     @BeforeEach
     void setUp() {
         controller = new AuthController(
-                authenticationManager, jwtUtil, userService, passwordEncoder, passwordResetService);
+                authenticationManager, jwtUtil, userService, passwordResetService);
     }
 
     @Test
