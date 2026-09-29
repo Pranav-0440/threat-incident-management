@@ -3,6 +3,7 @@ package com.threatmgmt.service;
 import com.threatmgmt.exception.ResourceNotFoundException;
 import com.threatmgmt.model.Attachment;
 import com.threatmgmt.repository.AttachmentRepository;
+import com.threatmgmt.repository.IncidentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +38,7 @@ public class AttachmentService {
             "image/webp", "text/csv", "text/plain", "application/zip");
 
     private final AttachmentRepository attachmentRepository;
+    private final IncidentRepository incidentRepository;
     private final AuditLogService auditLogService;
     private final S3Client s3Client;
     private final S3Presigner s3Presigner;
@@ -75,7 +77,10 @@ public class AttachmentService {
                     "Invalid incident ID format");
         }
 
-       
+        if (!incidentRepository.existsById(incidentId)) {
+            throw new ResourceNotFoundException("Incident", "id", incidentId);
+        }
+
         String key = "incidents/" + incidentId + "/" + storedFileName;
 
         PutObjectRequest putRequest = PutObjectRequest.builder()
@@ -149,5 +154,12 @@ public class AttachmentService {
             log.warn("Failed to delete file from Supabase Storage: {}", e.getMessage());
         }
         attachmentRepository.delete(attachment);
+        auditLogService.logEvent(
+                attachment.getIncidentId(),
+                requestingUser,
+                requestingUser,
+                "EVIDENCE_DELETED",
+                "Deleted evidence attachment: " + attachment.getOriginalName() + " (" + attachment.getFileName() + ")",
+                null);
     }
 }
