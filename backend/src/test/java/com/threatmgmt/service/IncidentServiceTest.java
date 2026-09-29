@@ -1,5 +1,6 @@
 package com.threatmgmt.service;
 
+import com.threatmgmt.model.ChecklistItem;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.repository.IncidentRepository;
@@ -9,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -270,5 +272,112 @@ class IncidentServiceTest {
         assertEquals(1, results.size());
         assertEquals("Phishing Threat", results.get(0).getTitle());
         verify(incidentRepo, times(1)).findByTitleContainingIgnoreCaseOrDescriptionContainingIgnoreCase(any(), any());
+    }
+
+    @Test
+    void createIncident_initializesDefaultChecklistWhenNoneProvided() {
+        Incident incident = Incident.builder()
+                .title("Malware Outbreak")
+                .description("Ransomware detected on finance server")
+                .severity("CRITICAL")
+                .reportedBy("soc_analyst")
+                .build();
+
+        when(incidentRepo.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Incident created = incidentService.createIncident(incident);
+
+        assertNotNull(created.getChecklist());
+        assertEquals(5, created.getChecklist().size());
+        assertTrue(created.getChecklist().stream().noneMatch(ChecklistItem::isCompleted));
+        assertTrue(created.getChecklist().stream().allMatch(item -> item.getId() != null && !item.getId().isEmpty()));
+        verify(incidentRepo).save(any(Incident.class));
+    }
+
+    @Test
+    void createIncident_preservesExplicitChecklist() {
+        ChecklistItem customItem = ChecklistItem.builder()
+                .id("custom-1")
+                .title("Custom containment procedure")
+                .completed(false)
+                .build();
+        Incident incident = Incident.builder()
+                .title("DDoS Alert")
+                .severity("HIGH")
+                .reportedBy("soc_analyst")
+                .checklist(new ArrayList<>(List.of(customItem)))
+                .build();
+
+        when(incidentRepo.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Incident created = incidentService.createIncident(incident);
+
+        assertNotNull(created.getChecklist());
+        assertEquals(1, created.getChecklist().size());
+        assertEquals("custom-1", created.getChecklist().get(0).getId());
+    }
+
+    @Test
+    void toggleChecklistItem_marksItemCompletedWithUserAndTimestamp() {
+        ChecklistItem item1 = ChecklistItem.builder().id("item-1").title("Task 1").completed(false).build();
+        ChecklistItem item2 = ChecklistItem.builder().id("item-2").title("Task 2").completed(false).build();
+        Incident incident = Incident.builder()
+                .id("inc-1")
+                .title("Incident 1")
+                .checklist(new ArrayList<>(List.of(item1, item2)))
+                .build();
+
+        when(incidentRepo.findById("inc-1")).thenReturn(Optional.of(incident));
+        when(incidentRepo.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Incident updated = incidentService.toggleChecklistItem("inc-1", "item-1", "analystA");
+
+        ChecklistItem toggled = updated.getChecklist().stream()
+                .filter(i -> i.getId().equals("item-1"))
+                .findFirst().orElseThrow();
+        assertTrue(toggled.isCompleted());
+        assertEquals("analystA", toggled.getCompletedBy());
+        assertNotNull(toggled.getCompletedAt());
+        verify(auditLogService).logEvent(eq("inc-1"), eq("analystA"), eq("analystA"), eq("CHECKLIST_UPDATED"), anyString(), isNull());
+    }
+
+    @Test
+    void toggleChecklistItem_unchecksCompletedItem() {
+        ChecklistItem item1 = ChecklistItem.builder()
+                .id("item-1")
+                .title("Task 1")
+                .completed(true)
+                .completedBy("analystA")
+                .completedAt(java.time.LocalDateTime.now().minusHours(1))
+                .build();
+        Incident incident = Incident.builder()
+                .id("inc-1")
+                .title("Incident 1")
+                .checklist(new ArrayList<>(List.of(item1)))
+                .build();
+
+        when(incidentRepo.findById("inc-1")).thenReturn(Optional.of(incident));
+        when(incidentRepo.save(any(Incident.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Incident updated = incidentService.toggleChecklistItem("inc-1", "item-1", "analystA");
+
+        ChecklistItem toggled = updated.getChecklist().get(0);
+        assertFalse(toggled.isCompleted());
+        assertNull(toggled.getCompletedBy());
+        assertNull(toggled.getCompletedAt());
+    }
+
+    @Test
+    void toggleChecklistItem_throwsIfItemNotFound() {
+        ChecklistItem item1 = ChecklistItem.builder().id("item-1").title("Task 1").completed(false).build();
+        Incident incident = Incident.builder()
+                .id("inc-1")
+                .checklist(new ArrayList<>(List.of(item1)))
+                .build();
+
+        when(incidentRepo.findById("inc-1")).thenReturn(Optional.of(incident));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> incidentService.toggleChecklistItem("inc-1", "non-existent-item", "analystA"));
     }
 }

@@ -133,7 +133,7 @@ public class IncidentController {
     }
 
     @PatchMapping("/{id}/checklist/{itemId}/toggle")
-    @PreAuthorize("hasRole('ANALYST') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ANALYST') or hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
     public ResponseEntity<Incident> toggleChecklist(
             @PathVariable String id,
             @PathVariable String itemId,

@@ -2,6 +2,7 @@ package com.threatmgmt.service;
 
 import com.threatmgmt.dto.AnalyticsStatsResponse;
 import com.threatmgmt.exception.ResourceNotFoundException;
+import com.threatmgmt.model.ChecklistItem;
 import com.threatmgmt.model.Incident;
 import com.threatmgmt.model.IncidentSearchDoc;
 import com.threatmgmt.repository.IncidentRepository;
@@ -16,11 +17,13 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -49,6 +52,9 @@ public class IncidentService {
         }
         if (incident.getDepartment() == null || incident.getDepartment().isEmpty()) {
             incident.setDepartment("SOC Team");
+        }
+        if (incident.getChecklist() == null || incident.getChecklist().isEmpty()) {
+            incident.setChecklist(generateDefaultChecklist(incident));
         }
 
         Incident saved = incidentRepo.save(incident);
@@ -423,10 +429,65 @@ public class IncidentService {
 
     public Incident toggleChecklistItem(String incidentId, String itemId, String username) {
         Incident incident = findById(incidentId);
+        List<ChecklistItem> checklist = incident.getChecklist();
+        if (checklist == null) {
+            checklist = new ArrayList<>();
+            incident.setChecklist(checklist);
+        }
+
+        boolean found = false;
+        boolean nowCompleted = false;
+        for (ChecklistItem item : checklist) {
+            if (item.getId() != null && item.getId().equals(itemId)) {
+                found = true;
+                boolean nextState = !item.isCompleted();
+                item.setCompleted(nextState);
+                item.setCompletedBy(nextState ? (username != null ? username : "analyst") : null);
+                item.setCompletedAt(nextState ? LocalDateTime.now() : null);
+                nowCompleted = nextState;
+                break;
+            }
+        }
+
+        if (!found) {
+            throw new IllegalArgumentException("Checklist item not found with ID: " + itemId);
+        }
+
         incident.setUpdatedAt(LocalDateTime.now());
+        Incident saved = incidentRepo.save(incident);
         auditLogService.logEvent(incidentId, username, username, "CHECKLIST_UPDATED",
-                "Toggled checklist item " + itemId + " on incident " + incidentId, null);
-        return incidentRepo.save(incident);
+                (nowCompleted ? "Completed" : "Unchecked") + " checklist item " + itemId + " on incident " + incidentId, null);
+        return saved;
+    }
+
+    private List<ChecklistItem> generateDefaultChecklist(Incident incident) {
+        List<ChecklistItem> items = new ArrayList<>();
+        items.add(ChecklistItem.builder()
+                .id(UUID.randomUUID().toString())
+                .title("Verify source and scope of threat indicator")
+                .completed(false)
+                .build());
+        items.add(ChecklistItem.builder()
+                .id(UUID.randomUUID().toString())
+                .title("Isolate affected host, endpoint, or network segment")
+                .completed(false)
+                .build());
+        items.add(ChecklistItem.builder()
+                .id(UUID.randomUUID().toString())
+                .title("Preserve digital evidence, artifacts, and forensic logs")
+                .completed(false)
+                .build());
+        items.add(ChecklistItem.builder()
+                .id(UUID.randomUUID().toString())
+                .title("Identify attack vectors and map to MITRE ATT&CK techniques")
+                .completed(false)
+                .build());
+        items.add(ChecklistItem.builder()
+                .id(UUID.randomUUID().toString())
+                .title("Validate remediation steps and conduct post-incident review")
+                .completed(false)
+                .build());
+        return items;
     }
 
     public Incident updateIncident(String id, Incident updated) {

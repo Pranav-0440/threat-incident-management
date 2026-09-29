@@ -278,4 +278,35 @@ class IncidentControllerTest {
                         .content(objectMapper.writeValueAsString(incident)))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    @WithMockUser(username = "analyst1", roles = "ANALYST")
+    void toggleChecklist_asAnalyst_returnsOk() throws Exception {
+        Incident incident = Incident.builder().id("test-id-1").title("Incident").build();
+        when(incidentService.toggleChecklistItem(eq("test-id-1"), eq("item-1"), eq("analyst1")))
+                .thenReturn(incident);
+
+        mockMvc.perform(patch("/api/v1/incidents/test-id-1/checklist/item-1/toggle"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("test-id-1"));
+    }
+
+    @Test
+    @WithMockUser(username = "superadmin1", roles = "SUPER_ADMIN")
+    void toggleChecklist_asSuperAdmin_returnsOk() throws Exception {
+        Incident incident = Incident.builder().id("test-id-1").title("Incident").build();
+        when(incidentService.toggleChecklistItem(eq("test-id-1"), eq("item-1"), eq("superadmin1")))
+                .thenReturn(incident);
+
+        mockMvc.perform(patch("/api/v1/incidents/test-id-1/checklist/item-1/toggle"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value("test-id-1"));
+    }
+
+    @Test
+    @WithMockUser(username = "user1", roles = "USER")
+    void toggleChecklist_asUser_forbidden() throws Exception {
+        mockMvc.perform(patch("/api/v1/incidents/test-id-1/checklist/item-1/toggle"))
+                .andExpect(status().isForbidden());
+    }
 }
