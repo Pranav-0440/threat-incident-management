@@ -70,6 +70,17 @@ public class GlobalExceptionHandler {
                 "Uploaded file exceeds the maximum allowed limit of 8MB", null);
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<Map<String, Object>> handleResponseStatusException(
+            org.springframework.web.server.ResponseStatusException ex) {
+        HttpStatus status = HttpStatus.resolve(ex.getStatusCode().value());
+        if (status == null) {
+            status = HttpStatus.BAD_REQUEST;
+        }
+        String reason = ex.getReason() != null ? ex.getReason() : ex.getMessage();
+        return buildErrorResponse(status, status.name(), reason, null);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         String correlationId = UUID.randomUUID().toString();

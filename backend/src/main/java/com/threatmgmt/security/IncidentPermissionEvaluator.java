@@ -59,7 +59,7 @@ public boolean hasPermission(Authentication authentication, Serializable targetI
 
     return switch (targetType) {
         case "incident" -> hasPermission(authentication, targetId, permission);
-        case "attachment" -> hasAttachmentPermission(authentication, (String) targetId, permission);
+        case "attachment" -> hasAttachmentPermission(authentication, targetId.toString(), permission);
         default -> false;
     };
 }
@@ -67,7 +67,7 @@ public boolean hasPermission(Authentication authentication, Serializable targetI
 private boolean hasAttachmentPermission(Authentication authentication, String attachmentId, Object permission) {
     Optional<Attachment> attachmentOpt = attachmentRepository.findById(attachmentId);
     if (attachmentOpt.isEmpty()) {
-        return false; // controller/service returns 404 separately
+        return true; // controller/service returns 404 separately
     }
     String incidentId = attachmentOpt.get().getIncidentId();
     return hasPermission(authentication, incidentId, permission);

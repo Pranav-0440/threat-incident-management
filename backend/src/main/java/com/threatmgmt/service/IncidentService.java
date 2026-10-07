@@ -191,7 +191,10 @@ public class IncidentService {
 
     public Map<String, Object> getStats(String username, boolean privileged) {
         List<Incident> incidents = getScopedIncidents(username, privileged);
+        return calculateStats(incidents);
+    }
 
+    public Map<String, Object> calculateStats(List<Incident> incidents) {
         long total = incidents.size();
         long open = countByStatus(incidents, "OPEN");
         long investigating = countByStatus(incidents, "INVESTIGATING");
@@ -251,7 +254,7 @@ public class IncidentService {
             }
         }
 
-        Map<String, Object> stats = getStats(username, privileged);
+        Map<String, Object> stats = calculateStats(incidents);
         Map.Entry<String, Long> topCategory = categoryCounts.entrySet().stream()
                 .max(Map.Entry.<String, Long>comparingByValue()
                         .thenComparing(Map.Entry.comparingByKey(Comparator.reverseOrder())))
