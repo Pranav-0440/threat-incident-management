@@ -18,6 +18,8 @@ spring:
       idle-timeout: 30000
       max-lifetime: 60000
       connection-timeout: 20000
+      keepalive-time: 30000
+      initialization-fail-timeout: 60000
       connection-test-query: SELECT 1
       data-source-properties:
         prepareThreshold: 0
