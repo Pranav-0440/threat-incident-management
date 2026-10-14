@@ -1,6 +1,7 @@
 import React from 'react';
 import { pdf } from '@react-pdf/renderer';
 import IncidentPdfDocument from '../components/IncidentPdfDocument';
+import SummaryReportPdfDocument from '../components/SummaryReportPdfDocument';
 
 /**
  * Utility functions for exporting incidents to PDF and CSV formats.
@@ -60,3 +61,29 @@ export async function exportIncidentPDF(incident) {
     alert('Failed to generate PDF report. Please try again.');
   }
 }
+
+export async function exportSummaryReportPDF(incidents, reportTitle = 'SOC Summary Report') {
+  if (!incidents || incidents.length === 0) return;
+
+  try {
+    const blob = await pdf(React.createElement(SummaryReportPdfDocument, { incidents, reportTitle })).toBlob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+
+    const sanitizedTitle = (reportTitle || 'soc_report')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_')
+      .slice(0, 30);
+
+    link.download = `${sanitizedTitle}_${new Date().toISOString().slice(0, 10)}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Failed to generate summary PDF report:', error);
+    alert('Failed to generate summary PDF report. Please try again.');
+  }
+}
+

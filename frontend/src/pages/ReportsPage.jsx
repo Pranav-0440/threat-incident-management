@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 import { incidentsAPI } from '../api/client';
-import { exportIncidentPDF, exportIncidentsCSV } from '../utils/exportUtils';
+import { exportIncidentPDF, exportIncidentsCSV, exportSummaryReportPDF } from '../utils/exportUtils';
 import { FileText, Download, Filter, Calendar, Shield, Users, FileSpreadsheet } from 'lucide-react';
+
+const REPORT_LABELS = {
+  incident: 'Incident Summaries Report',
+  weekly: 'Weekly SOC Report',
+  monthly: 'Monthly Executive Overview',
+  analyst: 'Analyst Performance Report',
+};
 
 export default function ReportsPage() {
   const [incidents, setIncidents] = useState([]);
@@ -34,7 +41,8 @@ export default function ReportsPage() {
 
   const handleExportPDF = () => {
     if (filteredIncidents.length === 0) return alert('No incidents match the selected report filter.');
-    exportIncidentPDF(filteredIncidents[0]);
+    const reportTitle = REPORT_LABELS[reportType] || 'SOC Report';
+    exportSummaryReportPDF(filteredIncidents, reportTitle);
   };
 
   const handleExportCSV = () => {
