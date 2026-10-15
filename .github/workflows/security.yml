@@ -65,7 +65,6 @@ jobs:
 
       - name: Dependency Review Scan
         uses: actions/dependency-review-action@v4
-        continue-on-error: true
         with:
           fail-on-severity: high
 
@@ -85,4 +84,3 @@ jobs:
       - name: Run NPM Security Audit
         run: npm audit --audit-level=high
         working-directory: frontend
-        continue-on-error: true
