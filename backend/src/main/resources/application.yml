@@ -34,6 +34,7 @@ spring:
     baseline-on-migrate: true
     baseline-version: 0
     locations: classpath:db/migration
+    repair-on-migrate: true
   data:
     redis:
       host: ${REDIS_HOST:localhost}
