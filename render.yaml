@@ -8,8 +8,55 @@ services:
     branch: main
     autoDeploy: true
     envVars:
+      # ── Server ──
       - key: PORT
         value: 8080
+
+      # ── PostgreSQL (required – set in Render Dashboard) ──
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+
+      # ── JWT (required – set in Render Dashboard) ──
+      - key: JWT_SECRET
+        sync: false
+
+      # ── Redis (required – set in Render Dashboard) ──
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: "6379"
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_SSL
+        value: "true"
+
+      # ── CORS / Frontend ──
+      - key: APP_CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: APP_WEBSOCKET_ALLOWED_ORIGINS
+        sync: false
+      - key: APP_FRONTEND_BASE_URL
+        sync: false
+
+      # ── SMTP / Email (optional – set in Render Dashboard) ──
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: APP_PASSWORD_RESET_MAIL_ENABLED
+        value: "false"
+      - key: APP_PASSWORD_RESET_MAIL_FROM
+        value: no-reply@threatguard.local
+
+      # ── Supabase S3 Storage ──
       - key: SUPABASE_S3_ENDPOINT
         sync: false
       - key: SUPABASE_S3_ACCESS_KEY
@@ -20,4 +67,4 @@ services:
         value: us-east-1
       - key: SUPABASE_BUCKET_NAME
         value: incident-attachments
- 
+
