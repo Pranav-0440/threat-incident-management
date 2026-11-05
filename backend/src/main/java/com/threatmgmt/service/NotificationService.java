@@ -50,6 +50,7 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void markAllAsRead(String username) {
         notificationRepository.updateAllNotificationsAsReadByUsername(username);
     }
