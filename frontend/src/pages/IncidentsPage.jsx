@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { incidentsAPI } from '../api/client';
 import { useAuth } from '../context/AuthContext';
@@ -7,7 +7,7 @@ import IncidentCard from '../components/IncidentCard';
 import SearchBar from '../components/SearchBar';
 import { exportIncidentsCSV } from '../utils/exportUtils';
 import { subscribeToIncidentUpdates } from '../utils/incidentCollaboration';
-import { PlusCircle, AlertTriangle, Download, Star } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Download, Star, X } from 'lucide-react';
 
 const SEVERITY_FILTERS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const PRIORITY_FILTERS = ['ALL', 'P1', 'P2', 'P3', 'P4'];
@@ -92,16 +92,32 @@ export default function IncidentsPage() {
   const [totalPages, setTotalPages] = useState(0);
 
   // Workspace Tabs
-  const [workspaceTab, setWorkspaceTab] = useState('ALL'); // ALL, ASSIGNED_TO_ME, REPORTED_BY_ME, RESOLVED
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [workspaceTab, setWorkspaceTab] = useState(() => searchParams.get('tab') || 'ALL'); // ALL, ASSIGNED_TO_ME, REPORTED_BY_ME, RESOLVED
 
   // Filter States
-  const [severityFilter, setSeverityFilter] = useState('ALL');
-  const [priorityFilter, setPriorityFilter] = useState('ALL');
-  const [statusFilter, setStatusFilter] = useState('ALL');
-  const [categoryFilter, setCategoryFilter] = useState('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [severityFilter, setSeverityFilter] = useState(() => searchParams.get('severity') || 'ALL');
+  const [priorityFilter, setPriorityFilter] = useState(() => searchParams.get('priority') || 'ALL');
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'ALL');
+  const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get('category') || 'ALL');
+  const [searchQuery, setSearchQuery] = useState(() => searchParams.get('q') || '');
+  const [presetFilter, setPresetFilter] = useState(() => searchParams.get('preset') || 'NONE');
 
   const navigate = useNavigate();
+
+  const updateUrlParams = useCallback((updates) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      Object.entries(updates).forEach(([key, val]) => {
+        if (!val || val === 'ALL' || val === 'NONE') {
+          next.delete(key);
+        } else {
+          next.set(key, val);
+        }
+      });
+      return next;
+    }, { replace: true });
+  }, [setSearchParams]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -163,39 +179,57 @@ export default function IncidentsPage() {
   }), [token]);
 
   const handleApplyPreset = (presetName) => {
-    setSeverityFilter('ALL');
-    setPriorityFilter('ALL');
-    setStatusFilter('ALL');
-    setCategoryFilter('ALL');
-    setSearchQuery('');
-    setWorkspaceTab('ALL');
     setPage(0);
-
     if (presetName === 'P1_CRITICAL') {
-      setPriorityFilter('P1');
+      const next = priorityFilter === 'P1' ? 'ALL' : 'P1';
+      setPriorityFilter(next);
+      updateUrlParams({ priority: next, preset: next === 'P1' ? 'P1_CRITICAL' : 'NONE' });
     } else if (presetName === 'ASSIGNED_ME') {
-      setWorkspaceTab('ASSIGNED_TO_ME');
+      const next = workspaceTab === 'ASSIGNED_TO_ME' ? 'ALL' : 'ASSIGNED_TO_ME';
+      setWorkspaceTab(next);
+      updateUrlParams({ tab: next });
     } else if (presetName === 'HIGH_RISK') {
-      setSearchQuery('risk:high');
+      const isHighRisk = presetFilter === 'HIGH_RISK' || searchQuery === 'risk:high';
+      const next = isHighRisk ? 'NONE' : 'HIGH_RISK';
+      setPresetFilter(next);
+      setSearchQuery(next === 'HIGH_RISK' ? 'risk:high' : '');
+      updateUrlParams({ preset: next, q: next === 'HIGH_RISK' ? 'risk:high' : '' });
     } else if (presetName === 'TODAY') {
-      setSearchQuery('today');
+      const isToday = presetFilter === 'TODAY' || searchQuery === 'today';
+      const next = isToday ? 'NONE' : 'TODAY';
+      setPresetFilter(next);
+      setSearchQuery(next === 'TODAY' ? 'today' : '');
+      updateUrlParams({ preset: next, q: next === 'TODAY' ? 'today' : '' });
     }
   };
 
-  const handleFilterChange = (setter, val) => {
+  const clearActivePreset = () => {
+    setPresetFilter('NONE');
+    setPriorityFilter('ALL');
+    if (searchQuery === 'risk:high' || searchQuery === 'today') {
+      setSearchQuery('');
+    }
+    updateUrlParams({ preset: 'NONE', priority: 'ALL', q: '' });
+    setPage(0);
+  };
+
+  const handleFilterChange = (setter, filterKey, val) => {
     setter(val);
     setPage(0);
+    updateUrlParams({ [filterKey]: val });
   };
 
   const handleWorkspaceTabChange = (tabId) => {
     setWorkspaceTab(tabId);
     setPage(0);
+    updateUrlParams({ tab: tabId });
   };
 
   const handleSearch = useCallback((query) => {
     setSearchQuery(query);
     setPage(0);
-  }, []);
+    updateUrlParams({ q: query });
+  }, [updateUrlParams]);
 
   if (loading) {
     return (
@@ -273,38 +307,84 @@ export default function IncidentsPage() {
       </div>
 
       {/* Starred Saved Search Presets */}
-      <div className="saved-presets" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-5)', overflowX: 'auto' }}>
+      <div className="saved-presets" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: 'var(--space-4)', overflowX: 'auto', flexWrap: 'wrap' }}>
         <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Star size={14} style={{ color: '#eab308' }} /> Saved Presets:
         </span>
         <button
           className="btn btn-secondary btn-sm"
           onClick={() => handleApplyPreset('P1_CRITICAL')}
-          style={{ fontSize: '11px', padding: '4px 10px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 10px',
+            background: priorityFilter === 'P1' ? 'rgba(239, 68, 68, 0.25)' : 'rgba(239, 68, 68, 0.1)',
+            color: '#ef4444',
+            border: priorityFilter === 'P1' ? '1px solid #ef4444' : '1px solid rgba(239, 68, 68, 0.3)',
+            boxShadow: priorityFilter === 'P1' ? '0 0 8px rgba(239, 68, 68, 0.4)' : 'none'
+          }}
         >
-          ★ P1 Critical Incidents
+          ★ P1 Critical {priorityFilter === 'P1' ? '✓' : ''}
         </button>
         <button
           className="btn btn-secondary btn-sm"
           onClick={() => handleApplyPreset('ASSIGNED_ME')}
-          style={{ fontSize: '11px', padding: '4px 10px', background: 'rgba(99, 102, 241, 0.1)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)' }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 10px',
+            background: workspaceTab === 'ASSIGNED_TO_ME' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.1)',
+            color: '#818cf8',
+            border: workspaceTab === 'ASSIGNED_TO_ME' ? '1px solid #818cf8' : '1px solid rgba(99, 102, 241, 0.3)',
+            boxShadow: workspaceTab === 'ASSIGNED_TO_ME' ? '0 0 8px rgba(99, 102, 241, 0.4)' : 'none'
+          }}
         >
-          ★ Assigned To Me
+          ★ Assigned To Me {workspaceTab === 'ASSIGNED_TO_ME' ? '✓' : ''}
         </button>
         <button
           className="btn btn-secondary btn-sm"
           onClick={() => handleApplyPreset('HIGH_RISK')}
-          style={{ fontSize: '11px', padding: '4px 10px', background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', border: '1px solid rgba(249, 115, 22, 0.3)' }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 10px',
+            background: (presetFilter === 'HIGH_RISK' || searchQuery === 'risk:high') ? 'rgba(249, 115, 22, 0.25)' : 'rgba(249, 115, 22, 0.1)',
+            color: '#f97316',
+            border: (presetFilter === 'HIGH_RISK' || searchQuery === 'risk:high') ? '1px solid #f97316' : '1px solid rgba(249, 115, 22, 0.3)',
+            boxShadow: (presetFilter === 'HIGH_RISK' || searchQuery === 'risk:high') ? '0 0 8px rgba(249, 115, 22, 0.4)' : 'none'
+          }}
         >
-          ★ High Risk (&ge;70)
+          ★ High Risk (&ge;70) {(presetFilter === 'HIGH_RISK' || searchQuery === 'risk:high') ? '✓' : ''}
         </button>
         <button
           className="btn btn-secondary btn-sm"
           onClick={() => handleApplyPreset('TODAY')}
-          style={{ fontSize: '11px', padding: '4px 10px' }}
+          style={{
+            fontSize: '11px',
+            padding: '4px 10px',
+            background: (presetFilter === 'TODAY' || searchQuery === 'today') ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255, 255, 255, 0.05)',
+            color: (presetFilter === 'TODAY' || searchQuery === 'today') ? '#10b981' : 'inherit',
+            border: (presetFilter === 'TODAY' || searchQuery === 'today') ? '1px solid #10b981' : '1px solid var(--color-border)',
+            boxShadow: (presetFilter === 'TODAY' || searchQuery === 'today') ? '0 0 8px rgba(16, 185, 129, 0.4)' : 'none'
+          }}
         >
-          ★ Today's Incidents
+          ★ Today's Incidents {(presetFilter === 'TODAY' || searchQuery === 'today') ? '✓' : ''}
         </button>
+
+        {(presetFilter !== 'NONE' || priorityFilter !== 'ALL' || searchQuery === 'risk:high' || searchQuery === 'today') && (
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={clearActivePreset}
+            style={{
+              fontSize: '11px',
+              padding: '3px 8px',
+              marginLeft: 'auto',
+              color: '#94a3b8',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <X size={12} /> Clear Preset ({totalElements} matching)
+          </button>
+        )}
       </div>
 
       {/* Search & Syntax support */}
@@ -322,7 +402,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${priorityFilter === f ? 'active' : ''}`}
-              onClick={() => handleFilterChange(setPriorityFilter, f)}
+              onClick={() => handleFilterChange(setPriorityFilter, 'priority', f)}
             >
               {f}
             </button>
@@ -337,7 +417,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${severityFilter === f ? 'active' : ''}`}
-              onClick={() => handleFilterChange(setSeverityFilter, f)}
+              onClick={() => handleFilterChange(setSeverityFilter, 'severity', f)}
             >
               {f}
             </button>
@@ -352,7 +432,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${statusFilter === f ? 'active' : ''}`}
-              onClick={() => handleFilterChange(setStatusFilter, f)}
+              onClick={() => handleFilterChange(setStatusFilter, 'status', f)}
             >
               {f.replace('_', ' ')}
             </button>
@@ -367,7 +447,7 @@ export default function IncidentsPage() {
             <button
               key={f}
               className={`filter-chip ${categoryFilter === f ? 'active' : ''}`}
-              onClick={() => handleFilterChange(setCategoryFilter, f)}
+              onClick={() => handleFilterChange(setCategoryFilter, 'category', f)}
             >
               {f.replace(/_/g, ' ')}
             </button>
