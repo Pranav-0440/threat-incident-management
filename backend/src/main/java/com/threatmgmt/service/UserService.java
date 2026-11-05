@@ -74,16 +74,15 @@ public class UserService implements UserDetailsService {
         }
 
         boolean isFirstUser = userRepository.count() == 0;
-        String requestedRole = (request.getRole() != null && !request.getRole().isBlank())
-                ? request.getRole().trim().toUpperCase()
-                : "ANALYST";
-
-        if (!requestedRole.equals("ADMIN") && !requestedRole.equals("ANALYST")) {
-            requestedRole = "ANALYST";
+        // Security: Self-registration on public endpoints must NEVER grant administrative privileges.
+        // The first registered user bootstraps as SUPER_ADMIN; all subsequent registrations are strictly ANALYST.
+        if (!isFirstUser && request.getRole() != null && !request.getRole().isBlank()
+                && !request.getRole().trim().equalsIgnoreCase("ANALYST")) {
+            log.warn("Security notice: Public registration for user '{}' attempted unpermitted role '{}'. Defaulting to ANALYST.",
+                    request.getUsername(), request.getRole());
         }
 
-        String role = isFirstUser ? "SUPER_ADMIN" : requestedRole;
-        
+        String role = isFirstUser ? "SUPER_ADMIN" : "ANALYST";
 
         User user = User.builder()
                 .username(request.getUsername())
@@ -93,8 +92,6 @@ public class UserService implements UserDetailsService {
                 .roles(List.of("ROLE_" + role))
                 .createdAt(LocalDateTime.now())
                 .build();
-
-        user.setRoles(List.of("ROLE_" + role));        
 
         User saved = userRepository.save(user);
         log.info("Registered new user: {} with enforced security role: {}", saved.getUsername(), role);
