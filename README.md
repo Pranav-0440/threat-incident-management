@@ -1,4 +1,4 @@
-# 🛡️ ThreatGuard - Threat Incident Management System (SOC Platform)
+# ThreatGuard - Threat Incident Management System (SOC Platform)
 
 [![Build Status](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-blue.svg)](https://github.com/Pranav-0440/threat-incident-management/actions)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
@@ -16,7 +16,7 @@ Built with a **Spring Boot 3.3** backend, **Redis (Upstash)** in-memory cache la
 
 ---
 
-## 📸 Enterprise Platform Highlights
+## Enterprise Platform Highlights
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/415c6acf-da2a-4c86-96ce-82f375a27fde" alt="ThreatGuard SOC Intelligence Dashboard" width="900" style="border-radius: 12px; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.5); max-width: 100%; height: auto;" />
@@ -24,7 +24,7 @@ Built with a **Spring Boot 3.3** backend, **Redis (Upstash)** in-memory cache la
 
 ---
 
-## 🏛️ System Architecture
+## System Architecture
 
 ```mermaid
 graph TD
@@ -50,7 +50,7 @@ PostgreSQL is the backend system of record. Evidence files use the local filesys
 
 ---
 
-## ⚡ Redis In-Memory Caching Layer
+## Redis In-Memory Caching Layer
 
 ThreatGuard integrates **Spring Cache + Spring Data Redis (Lettuce)** to eliminate repeated database roundtrips during authentication and active investigation workflows:
 
@@ -62,16 +62,16 @@ ThreatGuard integrates **Spring Cache + Spring Data Redis (Lettuce)** to elimina
 
 ---
 
-## 🚀 Key Feature Modules
+## Key Feature Modules
 
-### 1. 🔒 Hardened Authentication & Role-Based Access Control (RBAC)
+### 1. Hardened Authentication & Role-Based Access Control (RBAC)
 - **Role Selection Cards**: Register as a **SOC Analyst** or **Administrator** directly on the sign-up page.
 - **First-User Bootstrap**: The first registered system account automatically receives `ROLE_SUPER_ADMIN`.
 - **Effective Role Hierarchy**: A `ROLE_SUPER_ADMIN` account is treated as an administrator and analyst by the database-backed authority mapping; ordinary registration accepts only `ANALYST` or `ADMIN`.
 - **Login Identifier**: Authentication accepts either username or registered email address.
 - **Admin User Management Console (`/admin/users`)**: Dedicated admin control panel to view registered analyst accounts, manage roles (`ANALYST` / `ADMIN`), and review active assigned workloads.
 
-### 2. 🕵️ Security Analyst Investigation Workspace
+### 2. Security Analyst Investigation Workspace
 - **Tabbed Workspace (`IncidentDetailPage.jsx`)**:
   - **Overview**: High-level metadata, risk assessment score gauge (0-100), client-side executive summary preview, and 6-item interactive SOC investigation checklist.
   - **Timeline**: Vertical Jira-style chronological history rendering audit-log records.
@@ -84,13 +84,13 @@ ThreatGuard integrates **Spring Cache + Spring Data Redis (Lettuce)** to elimina
 - **Auto-Suggestion (`CreateIncidentPage.jsx`)**: A local keyword heuristic suggests severity, category, priority (`P1-P4`), and risk score; the user remains responsible for the submitted values.
 - **Executive Summary Preview (`IncidentDetailPage.jsx`)**: Generates a deterministic client-side summary from incident fields. There is no external LLM or backend AI endpoint in the current implementation.
 
-### 4. 📊 Dashboard Analytics & Interactive Workspaces
+### 4. Dashboard Analytics & Interactive Workspaces
 - **Clickable Dashboard KPI Cards**: Click "Open Incidents" or "Critical Alerts" on `DashboardPage.jsx` to open the workspace pre-filtered.
 - **Visual Analytics**: Interactive Severity Breakdown Donut Charts and Lifecycle Pipeline Bar Charts.
 - **"My Incidents" Workspace Tabs**: Sub-header tabs for *All Incidents*, *Assigned to Me*, *Reported by Me*, and *Resolved*.
 - **Starred Saved Presets Bar**: 1-Click filter shortcuts (`★ P1 Critical`, `★ Assigned To Me`, `★ High Risk (>70)`, `★ Today's Incidents`).
 
-### 5. 📄 Executive Reports & Data Exporter
+### 5. Executive Reports & Data Exporter
 - **1-Click PDF Report Generator**: Produces branded Executive Incident Summaries with risk gauges and incident metadata; any AI-labelled notes are client-side text, not external model output.
 - **Bulk CSV Exporter**: Exports filtered incident tables into downloadable CSV spreadsheets.
 
@@ -100,7 +100,7 @@ ThreatGuard integrates **Spring Cache + Spring Data Redis (Lettuce)** to elimina
 
 ---
 
-## ⚖️ Risk Score & Priority Matrix Formula
+## Risk Score & Priority Matrix Formula
 
 ThreatGuard calculates a risk score (0-100) from severity and category weights, assigning an SLA priority window:
 
@@ -117,14 +117,14 @@ $$\text{Risk Score} = \text{Severity Weight} + \text{Category Weight}$$
 ### Priority & Target Response SLA Windows
 | Priority | Trigger Criteria | Target SLA |
 | :--- | :--- | :---: |
-| 🔴 **P1 - Critical** | Severity = CRITICAL or Risk Score $\ge 70$ | **4 Hours** |
-| 🟠 **P2 - High** | Severity = HIGH or Risk Score $\ge 50$ | **8 Hours** |
-| 🟡 **P3 - Medium** | Severity = MEDIUM or Risk Score $\ge 30$ | **24 Hours** |
-| 🟢 **P4 - Low** | Severity = LOW or Risk Score $< 30$ | Standard queue |
+| **P1 - Critical** | Severity = CRITICAL or Risk Score $\ge 70$ | **4 Hours** |
+| **P2 - High** | Severity = HIGH or Risk Score $\ge 50$ | **8 Hours** |
+| **P3 - Medium** | Severity = MEDIUM or Risk Score $\ge 30$ | **24 Hours** |
+| **P4 - Low** | Severity = LOW or Risk Score $< 30$ | Standard queue |
 
 ---
 
-## 🔌 REST API Reference & Interactive Docs
+## REST API Reference & Interactive Docs
 
 Interactive OpenAPI documentation is available when running the backend:
 - **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
@@ -271,7 +271,7 @@ npm run dev
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## Testing & Quality Assurance
 
 ```bash
 # Backend unit & integration test suite
@@ -286,7 +286,7 @@ npm run build
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are warmly welcomed! Please read our [**Contributing Guide**](CONTRIBUTING.md) and [**Code of Conduct**](CODE_OF_CONDUCT.md) for full details on our branching workflow, code conventions, and pull request process.
 
@@ -297,6 +297,6 @@ Contributions are warmly welcomed! Please read our [**Contributing Guide**](CONT
 
 ---
 
-## 📄 License
+## License
 
 Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
